@@ -1,0 +1,17 @@
+name: pylit 
+
+channels:
+  - defaults
+
+dependencies:
+  - python=3.8
+  - numpy
+  - matplotlib
+  - sphinx
+  - scipy
+  - ipykernel
+  - sympy
+  - numba
+  - streamlit
+  - plotly
+  - streamlit_option_menu
