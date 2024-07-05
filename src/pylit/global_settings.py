@@ -13,6 +13,7 @@ ARRAY = np.ndarray
 
 # Testing
 
+
 def EPS(x, y):
     return np.max(np.abs(x - y))
 
@@ -30,6 +31,7 @@ EPS_LOW = 10**-10
 # Optimisation
 
 TOL = np.spacing(1.0)
+MAX_ITER = 100
 TOL_LOG = 1e-3
 
 # Numba

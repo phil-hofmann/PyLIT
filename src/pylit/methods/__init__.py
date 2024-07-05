@@ -11,4 +11,3 @@ from .lsq_var_reg import get as lsq_var_reg
 from .lsq_l2_fit import get as lsq_l2_fit
 from .lsq_max_entropy_fit import get as lsq_max_entropy_fit
 from .lsq_cdf_l2_fit import get as lsq_cdf_l2_fit
-from .lsq_cdf_l2_fit_autograd import get as lsq_cdf_l2_fit_autograd

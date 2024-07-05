@@ -7,10 +7,7 @@ from pylit.global_settings import TOL, ARRAY, FLOAT_DTYPE, INT_DTYPE
 from pylit.ui.options import Options, Option
 from pylit.ui.param_map import ParamMap, Param
 
-MODEL_NAMES = ["rpa", "static", "ideal"]
 PATH_PROJECT = str(Path(__file__).parent.parent.parent.parent)
-PATH_DATA = PATH_PROJECT + "/data"  # TODO os join
-PATH_EXPERIMENTS = PATH_PROJECT + "/experiments"  # TODO os join
 PATH_SETTINGS = PATH_PROJECT + "/app_settings.json"  # TODO os join
 MPL_COLORS = mpl.colors
 PLOTLY_COLORS = plotly.colors.qualitative.Plotly

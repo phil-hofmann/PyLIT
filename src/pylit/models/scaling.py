@@ -1,5 +1,4 @@
 import numpy as np
-
 from typing import List
 from pylit.utils import diff_interval
 from pylit.models.ABC import LinearRegressionModelABC
@@ -65,6 +64,7 @@ class LinearScaling:
         """The diffeomorphism onto the interval [0, b]."""
         return self._psy
 
+
 class ForwardLinearScaling(LinearScaling):
 
     def __init__(self, grid_points: ARRAY, right_end_point: FLOAT_DTYPE = 1.0):
@@ -89,6 +89,7 @@ class ForwardLinearScaling(LinearScaling):
             return func(self._psy(input))
 
         return wrapper
+
 
 class InverseLinearRescaling(LinearScaling):
 

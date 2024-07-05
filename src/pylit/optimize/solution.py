@@ -86,14 +86,3 @@ class Solution:
         del mydict["class_name"]
 
         return mydict
-    
-def example():
-    return Solution(
-        x = np.array([1., 2., 3.], dtype=FLOAT_DTYPE),
-        eps = FLOAT_DTYPE(0.1),
-        residuum = FLOAT_DTYPE(0.2))
-
-if __name__ == "__main__":
-
-    # Example Usage:
-    ex = example()

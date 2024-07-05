@@ -1,9 +1,8 @@
-import pylit
+from pylit import ui
 import streamlit as st
-import os
 
 def main():
-    pylit.ui.components.settings_manager()
+    ui.components.settings_manager()
 
     # Page settings
     st.set_page_config(

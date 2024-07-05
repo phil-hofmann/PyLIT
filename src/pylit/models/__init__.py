@@ -1,5 +1,5 @@
 # Files
-from . import lrm_scaling
+from . import scaling
 
 # Classes 
 from .deltadirac import DeltaDiracRLRM

@@ -33,7 +33,5 @@ class UniformKernel(ConvolutionKernel):
         
     def kernel(self) -> ARRAY:
         return np.ones(self.window) / self.window
-    
-if __name__ == "__main__":
-    
-    pass
+
+# Add more convolutions as needed

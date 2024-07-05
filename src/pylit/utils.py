@@ -1,77 +1,10 @@
 import numpy as np
+import json
 from numba import njit
-import pypandoc
-import datetime
-
 from IPython.display import display, Math
 from typing import Tuple, List
 from pylit.models.ABC import LinearRegressionModelABC
 from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE
-
-from docx import Document
-from docx.shared import Inches
-from docx.enum.text import WD_BREAK
-
-
-def extend_on_negative_axis(nodes: ARRAY) -> ARRAY:
-    """Extend the input array to the negative axis.
-
-    Args:
-    -----
-    nodes : ARRAY
-        The array containing the nodes which are greater or equal zero.
-
-    Raises:
-    -------
-    ValueError:
-        If the nodes are not non-negative.
-
-    Returns
-    -------
-    ARRAY:
-        The nodes extended symmetrical to the negative axis.
-    """
-
-    # Type check
-    if not isinstance(nodes, ARRAY):
-        raise TypeError("The nodes must be an array.")
-
-    # Type Conversion
-    nodes = nodes.astype(FLOAT_DTYPE)
-
-    # Integrity
-    if np.any(nodes < 0.0):
-        raise ValueError("The nodes must be non-negative.")
-
-    return np.concatenate((-np.flip(nodes), nodes))
-
-def extend_S(S_pos: ARRAY, omega_pos: ARRAY, beta: FLOAT_DTYPE) -> ARRAY:
-    """Extend the S(omega) function to the negative axis.
-
-    With given values of S(omega) having omega >= 0
-    this function returns S(omega) with the left side, thus where
-    omega < 0.
-
-    Args:
-    -----
-    S_pos : ARRAY
-        The values of S(omega) with omega >= 0.
-    omega_pos : ARRAY
-        The non negative omega points.
-    beta : FLOAT_DTYPE
-        The decay factor.
-
-    Returns:
-    --------
-    ARRAY:
-        S(omega) values.
-    """
-
-    S_neg = np.flip(S_pos)
-    S_neg = S_pos[:] * np.exp(-beta * omega_pos[:])
-    S_ext = np.concatenate((np.flip(S_neg), S_pos))
-
-    return S_ext
 
 
 def extendS(
@@ -115,9 +48,7 @@ def extendS(
     return omega_ext, S_ext
 
 
-def generate_multi_index_set(
-    dimension: INT_DTYPE, degrees: List[INT_DTYPE]
-) -> ARRAY:
+def generate_multi_index_set(dimension: INT_DTYPE, degrees: List[INT_DTYPE]) -> ARRAY:
     """Compute the multi indices with respect to the dimension and the degree.
 
     Parameters
@@ -138,9 +69,7 @@ def generate_multi_index_set(
     )
 
     # Reshape multi-indices and return the correct multi-index set
-    return np.array(
-        [meshgrid_array.ravel() for meshgrid_array in meshgrid_arrays]
-    ).T
+    return np.array([meshgrid_array.ravel() for meshgrid_array in meshgrid_arrays]).T
 
 
 def to_string(obj):
@@ -169,11 +98,7 @@ def to_string(obj):
         elif isinstance(value, dict):
             keys = list(value.keys())
             values = list(value.values())
-            value = (
-                "{"
-                + f"{keys[0]}: {values[0]}, ... ,{keys[-1]}: {values[-1]}"
-                + "}"
-            )
+            value = "{" + f"{keys[0]}: {values[0]}, ... ,{keys[-1]}: {values[-1]}" + "}"
         mystr += f"{attr}: {value}\n"
 
     return mystr
@@ -197,9 +122,7 @@ def svd(M: ARRAY) -> Tuple[ARRAY, ARRAY, ARRAY]:
     return U, S, V
 
 
-def diff_interval(
-    tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE
-) -> Tuple[callable, callable]:
+def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, callable]:
     def psy(tau: FLOAT_DTYPE) -> FLOAT_DTYPE:
         return (tau - tau0) / (tau1 - tau0)
 
@@ -218,20 +141,11 @@ def lrm_analysis(model: LinearRegressionModelABC, invertible: bool = False):
 
     if invertible:
         R_inv = np.linalg.inv(R)
-        display(
-            Math(
-                "\|R^{-1}\|_1 = "
-                + "{:.2e}".format(np.linalg.norm(R_inv, ord=1))
-            )
-        )
+        display(Math("\|R^{-1}\|_1 = " + "{:.2e}".format(np.linalg.norm(R_inv, ord=1))))
 
     else:
         R_plus = np.linalg.pinv(R)
-        display(
-            Math(
-                "\|R^+\|_1 = " + "{:.2e}".format(np.linalg.norm(R_plus, ord=1))
-            )
-        )
+        display(Math("\|R^+\|_1 = " + "{:.2e}".format(np.linalg.norm(R_plus, ord=1))))
 
     # SVD Precision
     U, S, V = svd(R)
@@ -307,28 +221,6 @@ def int_array_to_str(int_array):
     """
     return ",".join(str(x) for x in int_array)
 
-def exp_std(x: ARRAY, rho: ARRAY) -> Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
-    """Calculate the corrected sample variance for the input data array.
-
-    Parameters:
-    -----------
-        x: ARRAY
-            The input data array.
-
-        rho: ARRAY
-            The (probably unscaled and negative) density function of the input data array.
-
-    Returns:
-    --------
-        Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
-            Returns the expected value and the standard deviation."""
-
-    rho = rho - np.min(rho) * any(rho < 0.0)  # Shift the density function
-    rho = rho / np.sum(rho)  # Normalize the density function
-    mean = np.sum(x * rho)  # Expected value
-    std = np.sqrt(np.sum((x - mean) ** 2 * rho))  # Standard deviation
-
-    return mean, std
 
 def add_white_noise(data: ARRAY, percent: FLOAT_DTYPE = 5.0) -> ARRAY:
     """Add white noise to the input data array.
@@ -346,9 +238,8 @@ def add_white_noise(data: ARRAY, percent: FLOAT_DTYPE = 5.0) -> ARRAY:
         ARRAY:
             Returns the noisy data array."""
 
-    return data + np.random.normal(
-        0, (percent / 100) * np.max(np.abs(data)), len(data)
-    )
+    return data + np.random.normal(0, (percent / 100) * np.max(np.abs(data)), len(data))
+
 
 def global_maximum(nodes, func_values) -> ARRAY:
     """Find the global maximum value, corresponding node, and corresponding function value.
@@ -379,6 +270,7 @@ def global_maximum(nodes, func_values) -> ARRAY:
 
     return global_max_entry
 
+
 def print_str_dict(d, indent=0):
     output = ""
     for key, value in d.items():
@@ -390,6 +282,7 @@ def print_str_dict(d, indent=0):
                 value = str(value[0]) + " ... " + str(value[-1])
             output += "\t" * indent + str(key) + ": " + str(value) + "\n"
     return output
+
 
 def print_dict(d, indent=0):
     for key, value in d.items():
@@ -434,10 +327,7 @@ def convert_np_arrays_to_lists(data):
         return data.tolist()
     elif isinstance(data, dict):
         # If data is a dictionary, recursively process its values
-        return {
-            key: convert_np_arrays_to_lists(value)
-            for key, value in data.items()
-        }
+        return {key: convert_np_arrays_to_lists(value) for key, value in data.items()}
     elif isinstance(data, (list, tuple)):
         # If data is a list or tuple, recursively process its elements
         return [convert_np_arrays_to_lists(item) for item in data]
@@ -501,7 +391,3 @@ def trapz_mat(x: ARRAY):
     np.fill_diagonal(trapz_mat[:, 1:], dx)
 
     return trapz_mat
-
-
-if __name__ == "__main__":
-    pass
