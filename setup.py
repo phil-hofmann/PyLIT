@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 if __name__ == "__main__":
     setup(
         name="pylit",
-        author=["Alexander Benedix Robles", "Phil Hofmann"],
-        author_email=["alexbenedix@gmail.com", "philhofmann@outlook.com"],
+        author=["Phil-Alexander Hofmann", "Alexander Benedix Robles"],
+        author_email=["philhofmann@outlook.com", "alexbenedix@gmail.com"],
         description="A package for the double sided inverse Laplace transformation.",
         python_requires=">=3.8",
         version="0.1",
@@ -15,17 +15,12 @@ if __name__ == "__main__":
             "matplotlib",
             "scipy",
             "sphinx",
-            "autograd",
             "ipykernel",
             "sympy",
             "nbsphinx",
             "sphinx-book-theme",
             "numba",
-            "python-docx",
-            "pypandoc",
-            "pdflatex",
             "streamlit",
             "plotly",
-            "streamlit_option_menu",
         ],
     )

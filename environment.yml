@@ -5,6 +5,7 @@ channels:
 
 dependencies:
   - python=3.8
+  - pip
   - numpy
   - matplotlib
   - sphinx
@@ -14,4 +15,5 @@ dependencies:
   - numba
   - streamlit
   - plotly
-  - streamlit_option_menu
+  - pip:
+    - streamlit_option_menu

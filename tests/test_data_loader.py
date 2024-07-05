@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylit.data_loader import DataLoader
+from pylit.core.data_loader import DataLoader
 from pylit.ui.settings import PATH_DATA
 
 """ Test the DataLoader class. """
