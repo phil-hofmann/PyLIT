@@ -1,0 +1,24 @@
+{
+    "name": "",
+    "noiseActive": true,
+    "noiseName": "WhiteNoise",
+    "noiseParams": {
+        "mean": 0.0,
+        "std": 0.01
+    },
+    "noiseConvActive": false,
+    "noiseConvName": "",
+    "noiseConvParams": {},
+    "scaleMaxF": true,
+    "PosS": true,
+    "ExtS": true,
+    "trapzS": true,
+    "methodName": "",
+    "methodParams": {},
+    "optimName": "",
+    "optimParams": {},
+    "scalingName": "",
+    "scalingParams": {},
+    "modelName": "",
+    "modelParams": {}
+}

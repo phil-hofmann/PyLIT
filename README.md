@@ -8,7 +8,7 @@ Please follow the steps below:
 
 1. Clone the project:
 ```bash
-git clone https://codebase.helmholtz.cloud/a.benedix-robles/ilt.git
+git clone https://github.com/phil-hofmann/pylit.git
 ```
 
 2. Open Anaconda prompt.
