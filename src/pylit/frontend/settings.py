@@ -1,5 +1,8 @@
+import numpy as np
 from pylit.global_settings import TOL, FLOAT_DTYPE, INT_DTYPE
 from pylit.frontend.core import Options, Option, ParamMap, Param
+from pylit.backend.core import Experiment
+from pylit.global_settings import ARRAY
 
 MODELS = Options(
     [
@@ -8,6 +11,41 @@ MODELS = Options(
         Option(ref="UniformRLRM", name="Linear Uniform Regression"),
     ]
 )
+
+
+def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
+    return ParamMap(
+        [
+            Param(
+                name="omegas",
+                my_type=ARRAY,
+                lower_value=np.round(
+                    exp.prep.modifiedOmegaMin,
+                    2,
+                ),
+                upper_value=np.round(exp.prep.modifiedOmegaMax, 2),
+                num_value=int(len(exp.prep.modifiedOmega) / 20),
+            ),
+            Param(
+                name="sigmas",
+                my_type=ARRAY,
+                lower_value=np.round(exp.prep.stdS, 2),
+                upper_value=np.round(10 * exp.prep.stdS, 2),
+                num_value=int(1 / exp.prep.stdS),
+            ),
+            Param(
+                name="beta",
+                default=1.0,
+                ignore=True,
+            ),
+            Param(
+                name="order",
+                default="0,1",
+                ignore=True,
+            ),
+        ]
+    )
+
 
 OPTIMIZER = Options(
     [
@@ -68,18 +106,27 @@ METHODS = Options(
     ]
 )
 
-METHODS_PARAM_MAP = ParamMap(
-    [
-        Param(
-            name="lambd",
-            my_type=FLOAT_DTYPE,
-            variation=True,
-        ),
-        Param(name="E", ignore=True),
-        Param(name="S", ignore=True),
-        Param(name="omegas", ignore=True),
-    ]
-)
+
+def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
+    lambd_default = 1.0 if not exp.prepared else exp.prep.forwardModifiedSMaxError
+    upper_value = 1.0 if not exp.prepared else exp.prep.forwardModifiedSMaxError
+    return ParamMap(
+        [
+            Param(
+                name="lambd",
+                my_type=FLOAT_DTYPE,
+                default=lambd_default,
+                variation=True,
+                lower_value=0.0,
+                upper_value=upper_value,
+                num_value=10,
+            ),
+            Param(name="E", ignore=True),
+            Param(name="S", ignore=True),
+            Param(name="omegas", ignore=True),
+        ]
+    )
+
 
 NOISES_IID = Options(
     [

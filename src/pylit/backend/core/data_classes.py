@@ -47,6 +47,9 @@ class Preparation:
     modifiedS: ARRAY = field(default_factory=empty_array)
     expS: FLOAT_DTYPE = 0.0
     stdS: FLOAT_DTYPE = 0.0
+    forwardModifiedS: ARRAY = field(default_factory=empty_array)
+    forwardModifiedSAbsError: ARRAY = field(default_factory=empty_array)
+    forwardModifiedSMaxError: FLOAT_DTYPE = 0.0
 
 
 @dataclass

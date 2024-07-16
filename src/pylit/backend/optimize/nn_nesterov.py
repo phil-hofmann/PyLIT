@@ -102,7 +102,7 @@ def _nn_nesterov_subroutine(
         # Check tolerance
         # (Checking for the gradient is not useful since the gradient could be still large, due to the projection onto ">=0",
         #  even if the solution is close to the minimum of the objective function.)
-
+        print(y.shape, R.shape, F.shape)
         fy1 = f(y, R, F)
         if k > 0 and np.abs(fy - fy1) < tol:
             break

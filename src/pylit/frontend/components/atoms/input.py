@@ -32,18 +32,13 @@ def Input(
         my_id_upper = f"{my_id}_upper"
         my_id_num_points = f"{my_id}_num_points"
         lower_value, upper_value, num_value = param.default # TODO Handle that
-        with st.expander(label=param.label, expanded=False):
+        with st.expander(label=param.label, expanded=True):
             col1, col2, col3, col4 = st.columns([2, 1, 1, 1 ])
             with col1:
                 seq_type = st.selectbox(
                     label="Type", options=["Linear"], key=my_id_seq_type
                 )
             with col2:
-                # lower_value = (
-                #     param.default[0]
-                #     if value is None and param.default is not None
-                #     else 0.0 if value is None and param.default is None else value[0]
-                # )
                 lower = st.number_input(
                     key=my_id_lower,
                     label="Lower",
@@ -52,11 +47,6 @@ def Input(
                     format="%f",
                 )
             with col3:
-                # upper_value = (
-                #     default_value[1]
-                #     if value is None and default_value is not None
-                #     else 1.0 if value is None and default_value is None else value[1]
-                # )
                 upper = st.number_input(
                     key=my_id_upper,
                     label="Upper",
@@ -65,11 +55,6 @@ def Input(
                     format="%f",
                 )
             with col4:
-                # num_value = (
-                #     default_value[2]
-                #     if value is None and default_value is not None
-                #     else 10 if value is None and default_value is None else value[2]
-                # )
                 num_points = st.number_input(
                     key=my_id_num_points,
                     label="Size",

@@ -11,6 +11,7 @@ from pylit.global_settings import (
     PARALLEL,
     FASTMATH,
 )
+from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
 def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
@@ -74,10 +75,10 @@ def _standard(lambd) -> Method:
         n = R.shape[1]
 
         A = R.T @ R + lambd * np.eye(n)
-        A = pylit.utils.jit_sub_mat_by_index_set(A, P)
+        A = jit_sub_mat_by_index_set(A, P)
 
         b = R.T @ F
-        b = pylit.utils.jit_sub_vec_by_index_set(b, P)
+        b = jit_sub_vec_by_index_set(b, P)
 
         return np.linalg.solve(A, b)
 

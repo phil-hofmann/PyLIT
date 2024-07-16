@@ -23,19 +23,21 @@ from pylit.backend.core.utils import (
 
 class Experiment:
 
-    # TODO
+    # TODO deprecated
     # These are the attributes that are not part of the config itself but are added by the experiment
     _model_attrs = {"_coeffs", "_grid_points", "_reg_mat"}
     _method_attrs = {"E", "S", "omegas"}
 
     def __init__(self, name: str, workspace: str = "/", make: bool = False):
         self.name = name
+        self.workspace = workspace
         self.directory = os.path.join(workspace, name)
         self.path_F = os.path.join(self.directory, "F.csv")
         self.path_S = os.path.join(self.directory, "S.csv")
         self.config_path = os.path.join(self.directory, "config.json")
         self.prep_path = os.path.join(self.directory, "prep.json")
         self.output_path = os.path.join(self.directory, "output.json")
+        self.path_run = os.path.join(self.directory, "run.py")
         self.plots_dir = os.path.join(self.directory, "plots")
 
         self._check_directories(make)
@@ -43,8 +45,7 @@ class Experiment:
 
         if os.path.isfile(self.output_path):
             self._init_model()
-            self._assign_coeffs()
-            self._benchmark()
+            # self._assign_coeffs() # NOTE do not really want to store the model multiple times
         else:
             self.model = None
             self.method = None
@@ -69,6 +70,7 @@ class Experiment:
 
     @property
     def prepared(self):
+        # TODO enhance to test all and put this somewhere else?
         return (
             self.prep is not None
             and (
@@ -82,6 +84,28 @@ class Experiment:
                 and self.prep.modifiedS.size > 0
             )
         )
+
+    @property
+    def ready_to_finish(self):
+        if not self.exported or not self.prepared:
+            return False
+        if self.config.methodName == "":
+            return False
+        if self.config.methodParams == {}:
+            return False
+        if self.config.modelName == "":
+            return False
+        if self.config.modelParams == {}:
+            return False
+        if self.config.optimName == "":
+            return False
+        if self.config.optimParams == {}:
+            return False
+        if self.config.scalingName == "":
+            return False
+        if self.config.scalingParams == {}:
+            return False
+        return True
 
     def _check_directories(self, make: bool):
         if os.path.isdir(self.directory):
@@ -103,6 +127,7 @@ class Experiment:
             self.config = load_from_json(Configuration, self.config_path)
         elif make:
             self.config = Configuration()
+            self.config.name = self.name  #  TODO maybe remove this
         else:
             raise FileNotFoundError(
                 f"The configuration file '{self.config_path}' does not exist. Please set 'make' to True."
@@ -147,16 +172,30 @@ class Experiment:
         self.prep.tauMin, self.prep.tauMax = np.min(self.prep.tau), np.max(
             self.prep.tau
         )
-        self._extend_and_scale()
+        self._extend_and_scale_S()
         self.prep.modifiedOmegaMin, self.prep.modifiedOmegaMax = np.min(
             self.prep.modifiedOmega
         ), np.max(self.prep.modifiedOmega)
         self.prep.expS, self.prep.stdS = exp_std(
             self.prep.modifiedOmega, self.prep.modifiedS
         )
+        self.prep.forwardModifiedS = np.array(
+            [
+                np.trapz(
+                    self.prep.modifiedS * np.exp(-self.prep.modifiedOmega * tau),
+                    self.prep.modifiedOmega,
+                )
+                for tau in self.prep.tau
+            ],
+            dtype=FLOAT_DTYPE,
+        )
+        self.prep.forwardModifiedSAbsError = np.abs(
+            self.prep.forwardModifiedS - self.prep.modifiedF
+        )
+        self.prep.forwardModifiedSMaxError = np.max(self.prep.forwardModifiedSAbsError)
         # Save preparation to JSON
         save_to_json(self.prep, self.prep_path)
-        # Also save config (so far) to Json
+        # Also save config (so far) to JSOn
         save_to_json(self.config, self.config_path)
 
     def _scale_and_noise_F(self):
@@ -187,12 +226,13 @@ class Experiment:
             )  # Noisy F
         self.prep.modifiedF = modifiedF
 
-    def _extend_and_scale(self):
-        modifiedOmega = extend_on_negative_axis(self.prep.omega)
+    def _extend_and_scale_S(self):
+        modifiedOmega = np.copy(self.prep.omega)
         modifiedS = np.copy(self.prep.S)
         if self.config.PosS:
             modifiedS = np.maximum(0, modifiedS)
         if self.config.ExtS:
+            modifiedOmega = extend_on_negative_axis(self.prep.omega)
             modifiedS = extend_S(modifiedS, self.prep.omega, self.prep.tauMax)
         if self.config.trapzS:
             modifiedS /= np.trapz(modifiedS, modifiedOmega)
@@ -200,10 +240,11 @@ class Experiment:
         self.prep.modifiedS = modifiedS
 
     def plot_prep(self):
-        self._matplot_prep()
-        return self._plotly_prep()
+        self._matplot_prep_data()
+        self._matplot_prep_forward()
+        return self._plotly_prep_data(), self._plotly_prep_forward()
 
-    def _matplot_prep(self):
+    def _matplot_prep_data(self):
         # Set figure size and create subplots
         fig, (ax1, ax2) = plt.subplots(
             1, 2, figsize=(12, 6), sharey=False, sharex=False
@@ -226,21 +267,63 @@ class Experiment:
         ax2.plot(
             self.prep.modifiedOmega,
             self.prep.modifiedS,
-            label=f"$S(\\omega)$",
+            label="$S(\\omega)$",
         )
         ax2.set_xlabel("$\\omega$")
         ax2.set_ylabel("$S(\\omega)$")
         ax2.legend()
         ax2.grid(True)
-        ax2.set_xlim(-0.75, 0.75)
 
         # Adjust layout
         plt.tight_layout()
 
         # Store matplot-plot
-        plt.savefig(os.path.join(self.plots_dir, "prep.png"))
+        plt.savefig(os.path.join(self.plots_dir, "prep-data.png"))
 
-    def _plotly_prep(self):
+    def _matplot_prep_forward(self):
+        # Set figure size and create subplots
+        fig, (ax1, ax2) = plt.subplots(
+            1, 2, figsize=(12, 6), sharey=False, sharex=False
+        )
+
+        # Plot forward S on the left subplot
+        ax1.set_title("$\\tau$-Space")
+        ax1.plot(
+            self.prep.tau,
+            self.prep.forwardModifiedS,
+            label="$L[S](\\tau)$",
+        )
+        ax1.plot(
+            self.prep.tau,
+            self.prep.modifiedF,
+            label="$F(\\tau)$",
+            color="black",
+            linestyle="--",
+        )
+        ax1.set_xlabel("$\\tau$")
+        ax1.set_ylabel("Laplace Transform")
+        ax1.legend()
+        ax1.grid(True)
+
+        # Plot forward S abs error on the right subplot
+        ax2.set_title("$\\tau$-Space")
+        ax2.plot(
+            self.prep.tau,
+            self.prep.forwardModifiedSAbsError,
+            label="$|L[S](\\tau) - F(\\tau)|$",
+        )
+        ax2.set_xlabel("$\\tau$")
+        ax2.set_ylabel("Absolute Error")
+        ax2.legend()
+        ax2.grid(True)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Store matplot-plot
+        plt.savefig(os.path.join(self.plots_dir, "prep-forward.png"))
+
+    def _plotly_prep_data(self):
         # Create a Plotly figure
         fig1 = go.Figure()
         fig2 = go.Figure()
@@ -280,12 +363,84 @@ class Experiment:
             ),
         )
         # Store plotly-plots
-        fig1.write_html(os.path.join(self.plots_dir, "prep_F.html"))
-        fig2.write_html(os.path.join(self.plots_dir, "prep_S.html"))
+        fig1.write_html(os.path.join(self.plots_dir, "prep-data-F.html"))
+        fig2.write_html(os.path.join(self.plots_dir, "prep-data-S.html"))
 
         return [fig1, fig2]
 
-    def fit(self):
+    def _plotly_prep_forward(self):
+        # Create a Plotly figure
+        fig1 = go.Figure()
+        fig2 = go.Figure()
+
+        # Plot forward S on the left subplot
+        fig1.add_trace(
+            go.Scatter(
+                x=self.prep.tau,
+                y=self.prep.modifiedF,
+                mode="lines",
+                name=f"F(τ)",
+                line=dict(dash='dash'),
+            )
+        )
+        fig1.add_trace(
+            go.Scatter(
+                x=self.prep.tau,
+                y=self.prep.forwardModifiedS,
+                mode="lines",
+                name=f"L[S](τ)",
+            )
+        )
+
+        # Plot forward S abs error on the right subplot
+        fig2.add_trace(
+            go.Scatter(
+                x=self.prep.tau,
+                y=self.prep.forwardModifiedSAbsError,
+                mode="lines",
+                name="$|L[S](\\tau)-F(\\tau)|$",
+            )
+        )
+        # Update layout
+        fig1.update_layout(
+            title="τ-Space",
+            xaxis=dict(title="τ"),
+            yaxis=dict(title="Laplace Transform"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+        fig2.update_layout(
+            title="ω-Space",
+            xaxis=dict(title="ω"),
+            yaxis=dict(title="Absolute Error"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+        # Store plotly-plots
+        fig1.write_html(os.path.join(self.plots_dir, "prep-forward-S.html"))
+        fig2.write_html(os.path.join(self.plots_dir, "prep-forward-S-abs-error.html"))
+
+        return [fig1, fig2]
+
+    def create_run(self):
+        if not self.ready_to_finish:
+            return False
+
+        # Save config to JSON
+        save_to_json(self.config, self.config_path)
+
+        # Create the content for run.py
+        run_py_content = f"""# This file was automatically generated by pylit.\n# Path: {self.path_run}\n# To run the experiment, execute this file with Python:\n# conda activate pylit\n# python {self.path_run}\n# conda deactivate\n\nfrom pylit.backend.core import Experiment\n\nname="{self.name}"\nworkspace="{self.workspace}"\nexp = Experiment(name, workspace)\nexp.fit_model()\nexp.plot_results()"""
+
+        # Write the content to run.py
+        with open(self.path_run, "w") as file:
+            file.write(run_py_content)
+
+        return True
+
+    def fit_model(self):
         self._init_model()
         self._add_method_params()
         self._init_method()
@@ -301,6 +456,10 @@ class Experiment:
         }
 
         model = getattr(models, self.config.modelName)(**modelParams)
+
+        model.grid_points = self.prep.tau
+
+        print(model.grid_points.shape)
 
         model = getattr(models.scaling, self.config.scalingName)(
             lrm=model, **self.config.scalingParams
@@ -352,17 +511,21 @@ class Experiment:
             raise ValueError("Method must be given as a list.")
         solutions = []
         optimize_func = getattr(optimize, self.config.optimName)
-        for item in enumerate(self.method):
+        for item in self.method:
             solutions.append(
                 optimize_func(
                     R=self.model.regression_matrix,
                     F=self.prep.modifiedF,
                     x0=self.model.coeffs,
                     method=item,
-                    maxiter=self.config.optimMaxIter,
-                    tol=self.config.optimTol,
+                    maxiter=self.config.optimParams["maxiter"],
+                    tol=self.config.optimParams["tol"],
                 )
             )
+
+        if self.output is None:
+            self.output = Output()
+
         # Map solutions content to output dataclass
         self.output.coefficients = np.array(
             [item.x for item in solutions], dtype=FLOAT_DTYPE
@@ -373,10 +536,6 @@ class Experiment:
         )
         # Checkpoint: Store output to JSON
         save_to_json(self.output, self.output_path)
-
-    def _assign_coeffs(self):
-        for i, item in enumerate(self.model):
-            item.coeffs = self.output.coefficients[i]
 
     def _evaluate(self):
         self.output.valsF = np.array(
@@ -391,6 +550,18 @@ class Experiment:
         )
         # Checkpoint: Store output to JSON
         save_to_json(self.output, self.output_path)
+
+    def plot_results(self):
+        if self.config.plot_coeffs:
+            self.plot_coeffs()
+        if self.config.plot_model:
+            self.plot_model()
+        if self.config.plot_error_forward_model:
+            self.plot_forward_model()
+        if self.config.plot_error_model:
+            self.plot_error_model()
+        if self.config.plot_error_forward_model:
+            self.plot_error_forward_model()
 
     def plot_coeffs(self):
         self._matplot_coeffs()

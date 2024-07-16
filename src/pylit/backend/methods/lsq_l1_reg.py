@@ -1,4 +1,3 @@
-import pylit
 import numpy as np
 
 from numba import njit
@@ -11,6 +10,7 @@ from pylit.global_settings import (
     PARALLEL,
     FASTMATH,
 )
+from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
 def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
@@ -48,7 +48,7 @@ def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
 def _standard(lambd) -> Method:
     """Least Squares with L1 Regularization."""
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -56,7 +56,7 @@ def _standard(lambd) -> Method:
 
         return 0.5 * np.sum((R @ x - F) ** 2) + lambd * np.sum(x)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -64,7 +64,7 @@ def _standard(lambd) -> Method:
 
         return R.T @ (R @ x - F) + lambd
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def solution(R, F, P):
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
@@ -73,14 +73,14 @@ def _standard(lambd) -> Method:
         # np.ix_ unsupported in numba
 
         A = R.T @ R
-        A = pylit.utils.jit_sub_mat_by_index_set(A, P)
+        A = jit_sub_mat_by_index_set(A, P)
 
         b = R.T @ F - lambd
-        b = pylit.utils.jit_sub_vec_by_index_set(b, P)
+        b = jit_sub_vec_by_index_set(b, P)
 
         return np.linalg.solve(A, b)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
         return 1 / (np.linalg.norm(R.T @ R) + lambd)

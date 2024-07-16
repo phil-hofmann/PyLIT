@@ -4,6 +4,7 @@ from pylit.global_settings import ARRAY
 from pylit.frontend.utils import extract_params
 from pylit.frontend.core import Options, ParamMap
 from pylit.frontend.components.atoms import Input
+from pylit.global_settings import FLOAT_DTYPE
 
 
 def NameParams(
@@ -44,10 +45,11 @@ def NameParams(
                 if mapped_param.ignore:
                     st.session_state[my_id]["params"][param_name] = mapped_param.default
                 elif mapped_param.variation:
+                    toggle_value = mapped_param.value is not None and mapped_param.value is not FLOAT_DTYPE and mapped_param.value is not float
                     st.toggle(
                         key=my_id_param_variation,
                         label=f"Variation of {mapped_param.name}",
-                        # value = ... TODO
+                        value=toggle_value,
                     )
                     mapped_param.my_type = (
                         ARRAY

@@ -44,7 +44,7 @@ def ExportDataFiles(my_id: str, default_directory: str, export_path: str):
         with cols[0]:
             if data_exported:
                 st.success(
-                    f"✅ &nbsp;  Successfully exported selected columns to '{export_path}'."
+                    f"✅ &nbsp; Successfully exported selected columns to '{export_path}'."
                 )
             else:
                 st.success(f"✅ &nbsp; Successfully fetched file.")

@@ -1,13 +1,13 @@
+import numpy as np
 from typing import Any, Optional
 from pylit.frontend.constants import (
     SCI_NUM_STEP,
     NUM_STEP,
     DEFAULT_INT,
     DEFAULT_FLOAT,
-    DEFAULT_ARRAY,
-    DEFAULT_ARRAY_UPPER,
-    DEFAULT_ARRAY_LOWER,
-    DEFAULT_ARRAY_NUM,
+    DEFAULT_UPPER_VALUE,
+    DEFAULT_LOWER_VALUE,
+    DEFAULT_NUM_VALUE,
 )
 from pylit.global_settings import INT_DTYPE, FLOAT_DTYPE, ARRAY
 
@@ -19,9 +19,12 @@ class Param:
         label: Optional[str] = None,
         my_type: Optional[type] = None,
         default: Optional[Any] = None,
+        step: Optional[Any] = None,
         min_value: Optional[Any] = None,
         max_value: Optional[Any] = None,
-        step: Optional[Any] = None,
+        lower_value: Optional[Any] = None,
+        upper_value: Optional[Any] = None,
+        num_value: Optional[Any] = None,
         variation: Optional[bool] = False,
         ignore: Optional[bool] = False,
     ):
@@ -29,9 +32,12 @@ class Param:
         self._label = label
         self._my_type = my_type
         self.default = default
+        self.step = step
         self.min_value = min_value
         self.max_value = max_value
-        self.step = step
+        self.lower_value = lower_value
+        self.upper_value = upper_value
+        self.num_value = num_value
         self.variation = variation
         self.ignore = ignore
         self.value = None
@@ -56,8 +62,14 @@ class Param:
 
     @property
     def default(self):
-        if self._default is not None:
+        if self._default is not None and self._my_type is not ARRAY and self._my_type is not list:
             return self._default
+        elif self._my_type is ARRAY or self._my_type is list: # TODO no default needed, change handling a bit?!?
+            return [
+                self.lower_value if self.lower_value is not None else DEFAULT_LOWER_VALUE,
+                self.upper_value if self.upper_value is not None else DEFAULT_UPPER_VALUE,
+                self.num_value if self.num_value is not None else DEFAULT_NUM_VALUE,
+            ]
         elif self._my_type is int:
             return int(DEFAULT_INT)
         elif self._my_type is INT_DTYPE:
@@ -66,10 +78,6 @@ class Param:
             return float(DEFAULT_FLOAT)
         elif self._my_type is FLOAT_DTYPE:
             return FLOAT_DTYPE(DEFAULT_FLOAT)
-        elif self._my_type is list:
-            return list(DEFAULT_ARRAY)
-        elif self._my_type is ARRAY:
-            return ARRAY(DEFAULT_ARRAY)
         # "This parameter has no default value and there is also no standard default value assigned!"
         return None
 
@@ -134,6 +142,10 @@ class Param:
             "step": self.step,
             "min_value": self.min_value,
             "max_value": self.max_value,
+            # NOTE: These attributes are not allowed for st.number_input
+            # "lower_value": self.lower_value, 
+            # "upper_value": self.upper_value,
+            # "num_value": self.num_value,
             "format": self.format,
         }
         not_none_attrs = {k:v for k, v in attrs.items() if v is not None}
@@ -141,4 +153,18 @@ class Param:
     
 
     def insert_value(self, value):
-        self.value = value
+        if self._my_type is None:
+            raise ValueError("The type of the parameter is not defined.") # TODO other handling?
+        elif self._my_type is not ARRAY and self._my_type is not list:
+            self.value = value
+        else:
+            # NOTE Only checks for linspace
+            # TODO Check for other types or move somewhere else?!?
+            num_value = len(value)
+            lower_value = np.min(value)
+            upper_value = np.max(value)
+            linspace = np.linspace(lower_value, upper_value, num_value)
+            if np.array_equal(value, linspace):
+                self.value = [lower_value, upper_value, num_value]
+            else:
+                raise ValueError("The given sequence is not a linspace sequence.")

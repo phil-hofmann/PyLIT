@@ -20,9 +20,11 @@ from pylit.frontend.settings import (
     SCALINGS,
     SCALINGS_PARAM_MAP,
     MODELS,
+    MODEL_PARAM_MAP,
 )
 from pylit.global_settings import ARRAY
 from pylit.frontend.components import ExportDataFiles, NameParams, DisplayFigure
+from pylit.frontend.components import OpenExperiment
 from pylit.frontend.core import Param, ParamMap
 
 
@@ -40,14 +42,19 @@ def main():
     if "preprocessed" not in st.session_state:
         st.session_state["preprocessed"] = False
 
-    # Assign st.session_state["exp"] to a local variable for easier access
-    if not st.session_state["exp"]:
+    # Assign st.session_state["exp"] to a local variable for easy access
+    if not st.session_state["exp"] or st.session_state["exp"] is None:
 
-        def on_change_name():
+        def init_experiment(name: str):
             st.session_state["exp"] = Experiment(
                 workspace=st.session_state["workspace"],
-                name=st.session_state["experiment_name"],
+                name=name,
                 make=True,
+            )
+
+        def on_change_name():
+            init_experiment(
+                name=st.session_state["experiment_name"],
             )
 
         st.text_input(
@@ -56,6 +63,19 @@ def main():
             key="experiment_name",
             on_change=on_change_name,
         )
+
+        st.write("<br/>", unsafe_allow_html=True)
+
+        name = OpenExperiment(
+            my_id="open_experiment",
+            workspace=st.session_state["workspace"],
+        )
+        if name is not None:
+            init_experiment(name)
+            st.rerun()  #  NOTE poor state handling
+
+        # as soon as a name is clicked and it is a valid experiment, give back the name of the experiment -> new component!
+
     else:
         exp = st.session_state["exp"]
 
@@ -63,11 +83,22 @@ def main():
             st.error("Experiment object is not of type Experiment.")
             return
 
+        col1, col2 = st.columns([95, 5])
+
+        with col1:
+            st.write(
+                f"""#### Name: {exp.name}""",
+                unsafe_allow_html=True,
+            )
+        with col2:
+            if st.button("❌"):
+                # TODO ask before leaving ...
+                st.session_state["exp"] = None
+                st.session_state["open_experiment"] = st.session_state["workspace"]
+                st.rerun()  # NOTE simple solution -- poor state handling
+
         st.write(
-            f"""
-                #### Name: {exp.name}
-                <hr style='margin:0;padding:0;padding-top:5px;'/>
-                """,
+            "<hr style='margin:0;padding:0;padding-top:0px;'/>",
             unsafe_allow_html=True,
         )
 
@@ -77,8 +108,8 @@ def main():
                 "🛢️ Export S",
                 "🎛️ &nbsp; Data Adjustments",
                 "🎛️ &nbsp; Model, Optimizer and Method",
-                "📄 &nbsp; Summary",
                 "📊 &nbsp; Output",
+                "📄 &nbsp; Summary",
                 "📝 &nbsp; Results",
             ]
         )
@@ -110,7 +141,10 @@ def main():
                 unsafe_allow_html=True,
             )
             if not exp.exported:
-                st.warning("Please export F.csv and S.csv before continuing!")
+                st.warning(
+                    "Please export F.csv and S.csv first.",
+                    icon="⚠️",
+                )
             else:
                 col1, col2, col3, col4 = st.columns(4)
 
@@ -231,16 +265,21 @@ def main():
                             {
                                 "Expected Value S": exp.prep.expS,
                                 "Standard deviation S": exp.prep.stdS,
+                                "Maximal Forward Error S": exp.prep.forwardModifiedSMaxError,
                             }
                         ]
                     )
 
-                    fig_data = exp.plot_prep()
+                    fig_data, fig_forward = exp.plot_prep()
                     DisplayFigure(fig_data)
+                    DisplayFigure(fig_forward)
 
         with tab4:
             if not exp.prepared:
-                st.warning("Please prepare the data first!")
+                st.warning(
+                    "Please prepare the data first.",
+                    icon="⚠️",
+                )
             else:
                 # Create columns
                 col1, col2 = st.columns([1, 1])
@@ -253,6 +292,7 @@ def main():
                     )
                     methodParams = exp.config.methodParams
                     methodParams = {} if methodParams is None else methodParams
+                    # INSERT Standard values for lambd !
                     (
                         exp.config.methodName,
                         exp.config.methodParams,
@@ -260,7 +300,7 @@ def main():
                         my_id=f"method",
                         options=METHODS,
                         ref=methods,
-                        param_map=METHODS_PARAM_MAP.insert_values(methodParams),
+                        param_map=METHODS_PARAM_MAP(exp).insert_values(methodParams),
                     )
                 # --- --- --- #
 
@@ -302,41 +342,6 @@ def main():
                 )
                 modelParams = exp.config.modelParams
                 modelParams = {} if modelParams is None else modelParams
-                MODEL_PARAM_MAP = ParamMap(
-                    [
-                        Param(
-                            name="omegas",
-                            my_type=ARRAY,
-                            default=[
-                                np.round(
-                                    exp.prep.modifiedOmegaMin,
-                                    2,
-                                ),
-                                np.round(exp.prep.modifiedOmegaMax, 2),
-                                int(len(exp.prep.modifiedOmega) / 5),
-                            ],
-                        ),
-                        Param(
-                            name="sigmas",
-                            my_type=ARRAY,
-                            default=[
-                                np.round(exp.prep.stdS, 2),
-                                np.round(10 * exp.prep.stdS, 2),
-                                int(1 / exp.prep.stdS),
-                            ],
-                        ),
-                        Param(
-                            name="beta",
-                            default=1.0,
-                            ignore=True,
-                        ),
-                        Param(
-                            name="order",
-                            default="0,1",
-                            ignore=True,
-                        ),
-                    ]
-                ).insert_values(modelParams)
 
                 (
                     exp.config.modelName,
@@ -345,58 +350,69 @@ def main():
                     my_id=f"model",
                     options=MODELS,
                     ref=models,
-                    param_map=MODEL_PARAM_MAP,
+                    param_map=MODEL_PARAM_MAP(exp).insert_values(modelParams),
                 )
 
         with tab5:
-            st.write(exp.config)
-            st.write(exp.prep)
+            if exp.ready_to_finish:
+                st.markdown(
+                    f"""<br/><b>Plotting Options</b><hr style='margin:0;padding:0'/>""",
+                    unsafe_allow_html=True,
+                )
+
+                exp.config.plot_coeffs = st.toggle(
+                    "Model coefficients",
+                    key="plot_coeffs",
+                    value=exp.config.plot_coeffs,
+                )
+
+                exp.config.plot_model = st.toggle(
+                    "Model",
+                    key="plot_model",
+                    value=exp.config.plot_model,
+                )
+
+                exp.config.plot_forward_model = st.toggle(
+                    "Forwarded model",
+                    key="plot_forward_model",
+                    value=exp.config.plot_forward_model,
+                )
+
+                exp.config.plot_error_model = st.toggle(
+                    "Model error",
+                    key="plot_error_model",
+                    value=exp.config.plot_error_model,
+                )
+
+                exp.config.plot_error_forward_model = st.toggle(
+                    "Forwarded model error",
+                    key="plot_error_forward_model",
+                    value=exp.config.plot_error_forward_model,
+                )
+
+                st.write(
+                    "<hr style='margin:0;padding:0;padding-top:5px;'/>",
+                    unsafe_allow_html=True,
+                )
+
+                if st.button("Finish Experiment Setup"):
+                    if exp.create_run():  # TODO create this function
+                        st.success("✅ &nbsp; Experiment setup completed.")
+                    else:
+                        # TODO is this case necessary?
+                        st.warning(
+                            "Some error message.",
+                            icon="⚠️",
+                        )
+            else:
+                st.warning(
+                    "Please finish the 'Data Adjustment' and 'Model, Optimizer and Method' steps first.",
+                    icon="⚠️",
+                )
 
         with tab6:
-            st.markdown(
-                f"""<br/><b>Plotting Options</b><hr style='margin:0;padding:0'/>""",
-                unsafe_allow_html=True,
-            )
-
-            exp.config.plot_coeffs = st.toggle(
-                "Model coefficients",
-                key="plot_coeffs",
-                value=exp.config.plot_coeffs,
-            )
-
-            exp.config.plot_model = st.toggle(
-                "Model",
-                key="plot_model",
-                value=exp.config.plot_model,
-            )
-
-            exp.config.plot_forward_model = st.toggle(
-                "Forwarded model",
-                key="plot_forward_model",
-                value=exp.config.plot_forward_model,
-            )
-
-            exp.config.plot_error_model = st.toggle(
-                "Model error",
-                key="plot_error_model",
-                value=exp.config.plot_error_model,
-            )
-
-            exp.config.plot_error_forward_model = st.toggle(
-                "Forwarded model error",
-                key="plot_error_forward_model",
-                value=exp.config.plot_error_forward_model,
-            )
-
-            if st.button("Finish Experiment Setup &nbsp; ➡️"):
-                if exp.create_run():  # TODO create this function
-                    st.success("Experiment setup completed.")
-                    # Some seconds and reload the page
-                else:
-                    st.warning(
-                        "Some error message.",
-                        icon="⚠️",
-                    )
+            st.write(exp.config)
+            st.write(exp.prep)
 
         with tab7:
             displayed_any = False
@@ -429,7 +445,7 @@ def main():
                 ):
                     DisplayFigure(exp.plot_error_forward_model())
                     displayed_any = True
-                
+
             if not displayed_any:
                 st.warning(
                     "There is nothing to display yet.",

@@ -3,7 +3,7 @@ import streamlit as st
 from pylit.frontend.utils import is_data_file
 
 
-def FileSelector(my_id: str, default_directory: str):
+def FileSelector(my_id: str, default_directory: str, navigation_bar:bool=True):
 
     my_id_path = f"{my_id}_path"
     my_id_btn = f"{my_id}_btn"
@@ -27,7 +27,7 @@ def FileSelector(my_id: str, default_directory: str):
 
     col1, col2 = st.columns([6, 94])
 
-    if not os.path.isfile(st.session_state[my_id]):
+    if not os.path.isfile(st.session_state[my_id]) and navigation_bar:
         # Go back button
         with col1:
             st.markdown("<div style='margin-top:30px'/>", unsafe_allow_html=True)
@@ -68,7 +68,7 @@ def FileSelector(my_id: str, default_directory: str):
         )
 
         # List files and folders in the selected directory
-        _, col2 = st.columns([6, 94])
+        _, col2, _ = st.columns([6, 88, 6])
 
         with col2:
             entries = [entry for entry in os.scandir(st.session_state[my_id])]
@@ -94,7 +94,3 @@ def FileSelector(my_id: str, default_directory: str):
                     )
 
     return st.session_state[my_id]
-
-
-if __name__ == "__main__":
-    file_selector(my_id="test", default_directory="/")

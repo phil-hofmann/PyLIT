@@ -21,9 +21,6 @@ def main():
     st.session_state["workspace"] = st.text_input(
         "Workspace", value=st.session_state["workspace"]
     )
-    st.session_state["view_coeffs_plot"] = st.toggle(
-        "Show Coefficients Plot", value=st.session_state["view_coeffs_plot"]
-    )
     st.session_state["wide_mode"] = st.toggle(
         "Wide Mode", value=st.session_state["wide_mode"]
     )

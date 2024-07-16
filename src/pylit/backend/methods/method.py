@@ -1,6 +1,6 @@
 from pylit.backend.utils import to_string
 
-class Method:
+class Method: # TODO put to dataclasses...
     """Represents a method for solving an optimization problem."""
 
     def __init__(
