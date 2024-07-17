@@ -28,7 +28,7 @@ class WhiteNoise(NoiseIID):
 
 class UniformNoise(NoiseIID):
         
-    def __init__(self,low: FLOAT_DTYPE, high: FLOAT_DTYPE):
+    def __init__(self, low: FLOAT_DTYPE, high: FLOAT_DTYPE):
         super().__init__()
         self.low = low
         self.high = high

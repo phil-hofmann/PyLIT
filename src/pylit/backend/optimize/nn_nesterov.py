@@ -66,7 +66,7 @@ def nn_nesterov(
     return Solution(x, fx, FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2)))
 
 
-# @nb.njit # TODO uncomment
+@nb.njit # TODO uncomment
 def _nn_nesterov_subroutine(
     R, F, f, grad_f, x0, lr, maxiter, tol, pr, protocol
 ) -> ARRAY:
@@ -102,7 +102,6 @@ def _nn_nesterov_subroutine(
         # Check tolerance
         # (Checking for the gradient is not useful since the gradient could be still large, due to the projection onto ">=0",
         #  even if the solution is close to the minimum of the objective function.)
-        print(y.shape, R.shape, F.shape)
         fy1 = f(y, R, F)
         if k > 0 and np.abs(fy - fy1) < tol:
             break

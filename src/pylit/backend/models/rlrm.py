@@ -57,6 +57,17 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
         # Typing
         if not isinstance(params, List):
             raise TypeError("The parameters must be a list.")
+        # Mappings
+        spatial_dimension = 1
+        params_dimension = len(params)
+        params = [
+            itr_p.astype(FLOAT_DTYPE)
+            if isinstance(itr_p, ARRAY) # Param is an array
+            else np.array(itr_p, dtype=FLOAT_DTYPE) if isinstance(itr_p, list) # Param is a list
+            else np.array([itr_p], dtype=FLOAT_DTYPE) # Param is a scalar
+            for itr_p in params
+        ]
+        # Continue Typing
         if not all(isinstance(itr_p, ARRAY) for itr_p in params):
             raise TypeError(f"Every parameter must be of type {ARRAY}.")
         if not all(itr_p.dtype == FLOAT_DTYPE for itr_p in params):
@@ -72,15 +83,6 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
             raise ValueError(
                 "There need to be at least one configuration for every parameter."
             )
-        # Determine
-        spatial_dimension = 1
-        params_dimension = len(params)
-        params = [
-            itr_p.astype(FLOAT_DTYPE)
-            if isinstance(itr_p, ARRAY)
-            else np.array(itr_p, dtype=FLOAT_DTYPE)
-            for itr_p in params
-        ]
         # Assign
         self._spatial_dimension = spatial_dimension
         self._params_dimension = params_dimension
@@ -127,7 +129,10 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
         # Typing
         if not isinstance(coeffs, ARRAY):
             raise TypeError(f"The coefficients must be of type {ARRAY}.")
-        # TODO Coeffs can be two dimensional
+        # ====
+        # TODO Allow coeffs to be two dimensional
+        # NOTE that simplifies the forward and __call__ method in the experiment class !!!
+        # ====
         # if not coeffs.dtype == FLOAT_DTYPE:
         #     raise TypeError(
         #         "The data type of the coefficients must be a floating point data type."
@@ -142,7 +147,7 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
     @property
     def spatial_dimension(self) -> INT_DTYPE:
         """Spatial dimension."""
-        return self._dimension
+        return self._spatial_dimension
 
     @spatial_dimension.setter
     def spatial_dimension(self, spatial_dimension: INT_DTYPE) -> None:
@@ -386,6 +391,7 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
         -----
         - NOTE This method can be overridden by the concrete child class to work with a different type of multi index set.
         """
+        
         return generate_multi_index_set(
             self._params_dimension, [itr_p.shape[0] for itr_p in self._params]
         )
@@ -450,7 +456,3 @@ class RegularLinearRegressionModel(RegularLinearRegressionModelABC):
         raise NotImplementedError(
             "The model method must be implemented by the concrete child class."
         )
-
-
-if __name__ == "__main__":
-    pass

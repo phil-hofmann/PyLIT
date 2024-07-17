@@ -48,27 +48,28 @@ def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
 def _standard(lambd) -> Method:
     """Least Squares with L1 Regularization."""
 
-    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * np.sum(x)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * np.mean(x)
 
-    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
+        n = R.shape[0]
+        return (R.T @ (R @ x - F) + lambd) / n
 
-        return R.T @ (R @ x - F) + lambd
-
-    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def solution(R, F, P):
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
         P = P.astype(INT_DTYPE)
+        n = R.shape[0]
 
         # np.ix_ unsupported in numba
 
@@ -80,10 +81,11 @@ def _standard(lambd) -> Method:
 
         return np.linalg.solve(A, b)
 
-    # @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        return 1 / (np.linalg.norm(R.T @ R) + lambd)
+        n = R.shape[0]
+        return n / (np.linalg.norm(R.T @ R) + lambd)
 
     return Method("lsq_l1_reg", f, grad_f, solution, lr, None)
 

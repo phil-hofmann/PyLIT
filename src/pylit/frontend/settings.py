@@ -7,8 +7,9 @@ from pylit.global_settings import ARRAY
 MODELS = Options(
     [
         Option(ref="GaussRLRM", name="Linear Gaussian Regression"),
-        Option(ref="DeltaDiracRLRM", name="Linear Delta Dirac Regression"),
-        Option(ref="UniformRLRM", name="Linear Uniform Regression"),
+        Option(ref="LaplaceRLRM", name="Linear Laplace Regression"),
+        # Option(ref="LogisticRLRM", name="Linear Logistic Regression"), # TODO fix some issue...
+        # Option(ref="CauchyRLRM", name="Linear Cauchy Regression"), # TODO fix some issue...
     ]
 )
 
@@ -51,14 +52,14 @@ OPTIMIZER = Options(
     [
         Option(ref="nn_nesterov", name="Non Negative Nesterov"),
         Option(ref="nn_adam", name="Non Negative ADAM"),
-        Option(ref="nn_bro", name="Non Negative Bro"),
+        # Option(ref="nn_bro", name="Non Negative Bro"),
     ]
 )
 
 OPTIM_PARAM_MAP = ParamMap(
     [
         Param(
-            name="maxiter", label="Maximal Iterations", my_type=INT_DTYPE, default=100
+            name="maxiter", label="Maximal Iterations", my_type=INT_DTYPE, default=1000
         ),
         Param(
             name="tol",
@@ -102,7 +103,6 @@ METHODS = Options(
         Option(ref="lsq_l2_fit", name="L2 Fitness"),
         Option(ref="lsq_max_entropy_fit", name="Maximum Entropy Fitness"),
         Option(ref="lsq_cdf_l2_fit", name="CDF L2 Fitness"),
-        Option(ref="lsq_cdf_l2_fit_autograd", name="CDF L2 Fitness autograd"),
     ]
 )
 

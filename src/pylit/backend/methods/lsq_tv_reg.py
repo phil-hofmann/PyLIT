@@ -56,28 +56,27 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
 def _standard(TV, lambd) -> Method:
     """Least Squares with Total Variation Regularization."""
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum((TV @ x) ** 2)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean((TV @ x) ** 2)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
+        n = R.shape[0]
+        return (R.T @ (R @ x - F) + lambd * TV.T @ (TV @ x)) / n
 
-        return R.T @ (R @ x - F) + lambd * TV.T @ (TV @ x)
-
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
         P = P.astype(INT_DTYPE)
-
         # np.ix_ unsupported in numba
 
         A = R.T @ R + lambd * TV.T @ TV
@@ -88,10 +87,11 @@ def _standard(TV, lambd) -> Method:
 
         return np.linalg.solve(A, b)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(TV.T @ TV))
+        n = R.shape[0]
+        return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(TV.T @ TV))
 
     return Method("lsq_tv_reg", f, grad_f, solution, lr, None)
 

@@ -321,6 +321,21 @@ def main():
                         ref=optimize,
                         param_map=OPTIM_PARAM_MAP.insert_values(optimParams),
                     )
+                    exp.config.x0Reset = st.toggle(
+                        "Reset x0",
+                        key="x0_reset",
+                        value=exp.config.x0Reset,
+                    )
+                    exp.config.adaptiveActive = st.toggle(
+                        "Adaptive",
+                        key="adaptive_active",
+                        value=exp.config.adaptiveActive,
+                    )
+                    exp.config.adaptiveResiduumMode = st.toggle(
+                        "Residuum Mode",
+                        key="adaptive_residuum_mode",
+                        value=exp.config.adaptiveResiduumMode,
+                    )
                 # --- --- --- #
 
                 # --- Model --- #
@@ -418,29 +433,29 @@ def main():
             displayed_any = False
             if exp.output is not None:
                 # TODO add these checks also in the experiment class methods!
-                if exp.output.coefficients and exp.config.plot_coeffs:
+                if exp.output.coefficients is not None and exp.config.plot_coeffs:
                     DisplayFigure(exp.plot_coeffs())
                     displayed_any = True
-                if exp.prep.modifiedS and exp.output.valsS and exp.config.plot_model:
+                if exp.prep.modifiedS is not None and exp.output.valsS is not None and exp.config.plot_model:
                     DisplayFigure(exp.plot_model())
                     displayed_any = True
                 if (
-                    exp.prep.modifiedF
-                    and exp.output.valsF
+                    exp.prep.modifiedF is not None
+                    and exp.output.valsF is not None
                     and exp.config.plot_forward_model
                 ):
                     DisplayFigure(exp.plot_forward_model())
                     displayed_any = True
                 if (
-                    exp.prep.modifiedS
-                    and exp.output.valsS
+                    exp.prep.modifiedS is not None
+                    and exp.output.valsS is not None
                     and exp.config.plot_error_model
                 ):
                     DisplayFigure(exp.plot_error_model())
                     displayed_any = True
                 if (
-                    exp.prep.modifiedF
-                    and exp.output.valsF
+                    exp.prep.modifiedF is not None
+                    and exp.output.valsF is not None
                     and exp.config.plot_error_forward_model
                 ):
                     DisplayFigure(exp.plot_error_forward_model())

@@ -56,49 +56,54 @@ def _standard(omegas, E, lambd) -> Method:
     """Least Squares with Cross Entropy Fitness."""
 
     n = E.shape[1]
-    norm = n**2 * np.linalg.norm(E) ** 2
+    norm = np.linalg.norm(E) ** 2
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
         m = E @ x  # Evaluate
-        m = np.clip(m, a_min=0, a_max=None)  # Clip Non-negative
-        p = m / np.sum(m)  # Normalize to one
-        E_p_omegas = np.sum(omegas * p)
-        V_p_omegas = np.sum((E_p_omegas - omegas) ** 2)
+        E_omegas = np.mean(omegas * m) # compute expected value with Riemann sum
+        V_omegas = np.mean((E_omegas - omegas) ** 2) # compute variance with Riemann sum
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * V_p_omegas
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * V_omegas
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
         m = E @ x  # Evaluate
-        m = np.clip(m, a_min=0, a_max=None)  # Clip Non-negative
-        p = m / np.sum(m)  # Normalize to one
-        E_p_omegas = np.sum(omegas * p)
-        J = (
-            E.T * np.sum(m) - np.sum(E.T, axis=1).reshape(-1, 1) @ m.reshape(1, -1)
-        ) / np.sum(m) ** 2
+        E_omegas = np.mean(omegas * m) # compute expected value with Riemann sum
 
-        return R.T @ (R @ x - F) + lambd * (E_p_omegas - omegas) @ J.T
+        # Gradient of the first term
+        residual = R @ x - F
+        grad_L1 = (R.T @ residual) / len(F)
+        
+        # Gradient of the second term
+        grad_V_omegas = lambd * (E_omegas - omegas) / len(omegas)
+        grad_E_omegas = np.mean(omegas * grad_V_omegas)
+        grad_m = grad_E_omegas * omegas / len(omegas)
+        grad_L2 = E.T @ grad_m
+        
+        # Total gradient
+        grad = grad_L1 + grad_L2
+        return grad
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
         # Solution is not available
         return None
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
         return 1 / (np.linalg.norm(R.T @ R) + lambd * norm)
 
-    return Method("lsq_max_entropy_fit", f, grad_f, solution, lr, None)
+    return Method("lsq_var_reg_fit", f, grad_f, solution, lr, None)
 
 
 def _svd(omegas, S, E, lambd) -> Method:

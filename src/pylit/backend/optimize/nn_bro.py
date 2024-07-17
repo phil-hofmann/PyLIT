@@ -3,6 +3,7 @@ import numpy as np
 import numba as nb
 
 from pylit.backend.core import Solution
+from pylit.backend.utils import argmax
 from pylit.global_settings import FLOAT_DTYPE, INT_DTYPE, ARRAY, TOL
 
 
@@ -66,7 +67,7 @@ def _nn_bro(R, F, f, grad_f, solution, x0, maxiter, tol, pr, protocol) -> ARRAY:
     while (not (P > 0).all()) and (grad_fx[1 - P > 0] > tol).any():
         # Get the "most" active coeff index and move to inactive set
         grad_fx[P > 0] = -np.inf
-        k = pylit.utils.argmax(grad_fx)  # B.2
+        k = argmax(grad_fx)  # B.2
         P[k] = 1  # B.3
 
         # Iteration solution

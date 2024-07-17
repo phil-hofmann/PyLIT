@@ -2,7 +2,8 @@
 from . import scaling
 
 # Classes 
-from .deltadirac import DeltaDiracRLRM
 from .gauss import GaussRLRM
+from .laplace import LaplaceRLRM
+from .logistic import LogisticRLRM
+from .cauchy import CauchyRLRM
 from .rlrm import RegularLinearRegressionModel
-from .uniform import UniformRLRM

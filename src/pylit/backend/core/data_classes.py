@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from pylit.global_settings import ARRAY, FLOAT_DTYPE
+from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE
 from pylit.backend.core.utils import empty_array
 
 
@@ -20,6 +20,9 @@ class Configuration:
     methodParams: dict = field(default_factory=dict)
     optimName: str = ""
     optimParams: dict = field(default_factory=dict)
+    x0Reset: bool = False
+    adaptiveActive: bool = False
+    adaptiveResiduumMode: bool = False
     scalingName: str = ""
     scalingParams: dict = field(default_factory=dict)
     modelName: str = ""

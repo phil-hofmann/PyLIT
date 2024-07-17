@@ -19,14 +19,17 @@ from pylit.backend.core.utils import (
     save_to_json,
     load_from_json,
 )
+from pylit.frontend.utils import (  # TODO avoid importing frontend in backend
+    extract_params,
+)
+
+MODERN_GREEN = "#50C878"
+
+# TODO:
+# - Add seperate methods for saving config, prep, output ... (INTEGRITY CHECKS)
 
 
 class Experiment:
-
-    # TODO deprecated
-    # These are the attributes that are not part of the config itself but are added by the experiment
-    _model_attrs = {"_coeffs", "_grid_points", "_reg_mat"}
-    _method_attrs = {"E", "S", "omegas"}
 
     def __init__(self, name: str, workspace: str = "/", make: bool = False):
         self.name = name
@@ -45,7 +48,6 @@ class Experiment:
 
         if os.path.isfile(self.output_path):
             self._init_model()
-            # self._assign_coeffs() # NOTE do not really want to store the model multiple times
         else:
             self.model = None
             self.method = None
@@ -145,6 +147,75 @@ class Experiment:
         else:
             self.output = Output()
 
+    def _check_save_config(self):
+        # Model Params
+        modelName = self.config.modelName
+        if modelName != "":
+            modelParams = self.config.modelParams
+            model_class = getattr(models, modelName)
+            model_func = model_class.__init__
+            model_class_params = extract_params(model_func).keys()
+            modelParams = {
+                key: value
+                for key, value in modelParams.items()
+                if key in model_class_params
+            }  # Only keep modelParams that are in the model_class_params
+            self.config.modelParams = modelParams  # Update modelParams
+
+        # Method Params
+        methodName = self.config.methodName
+        if methodName != "":
+            methodParams = self.config.methodParams
+            method_func = getattr(methods, methodName)
+            method_func_params = extract_params(method_func).keys()
+            methodParams = {
+                key: methodParams[key] if key in methodParams else None
+                for key in method_func_params
+            }  # Only keep methodParams that are in the method_func_params else set to None
+            self.config.methodParams = methodParams  # Update methodParams
+            # Add Evaluation Matrix
+            if "E" in self.config.methodParams:
+                self.config.methodParams["E"] = self.model(
+                    self.prep.modifiedOmega, matrix=True
+                )
+            # Add Model Matrix
+            if "S" in self.config.methodParams:
+                self.config.methodParams["S"] = self.prep.modifiedS
+            # Add omegas
+            if "omegas" in self.config.methodParams:
+                self.config.methodParams["omegas"] = self.prep.modifiedOmega
+
+        # Noise Params
+        noiseName = self.config.noiseName
+        if noiseName != "":
+            noiseParams = self.config.noiseParams
+            noise_class = getattr(noise_iid, noiseName)
+            noise_func = noise_class.__init__
+            noise_func_params = extract_params(noise_func).keys()
+            noiseParams = {
+                key: noiseParams[key]
+                for key in noiseParams.keys()
+                if key in noise_func_params
+            }
+            self.config.noiseParams = noiseParams
+
+        # Noise Convolution Params
+        noiseConvName = self.config.noiseConvName
+        if noiseConvName != "":
+            noiseConvParams = self.config.noiseConvParams
+            noiseConv_class = getattr(noise_conv, noiseConvName)
+            noiseConv_func = noiseConv_class.__init__
+            noiseConv_func_params = extract_params(noiseConv_func).keys()
+            noiseConvParams = {
+                key: noiseConvParams[key]
+                for key in noiseConvParams.keys()
+                if key in noiseConv_func_params
+            }
+            self.config.noiseConvParams = noiseConvParams
+
+        # Save config to JSON
+        save_to_json(self.config, self.config_path)
+
     def import_F(self):
         # Fetch tau, F from the data file
         dl = DataLoader(self.path_F)
@@ -168,6 +239,8 @@ class Experiment:
         dl.clear()
 
     def prepare(self):
+        # Check config and save (so far) to JSON
+        self._check_save_config()
         self._scale_and_noise_F()
         self.prep.tauMin, self.prep.tauMax = np.min(self.prep.tau), np.max(
             self.prep.tau
@@ -195,8 +268,6 @@ class Experiment:
         self.prep.forwardModifiedSMaxError = np.max(self.prep.forwardModifiedSAbsError)
         # Save preparation to JSON
         save_to_json(self.prep, self.prep_path)
-        # Also save config (so far) to JSOn
-        save_to_json(self.config, self.config_path)
 
     def _scale_and_noise_F(self):
         modifiedF = np.copy(self.prep.F)
@@ -280,49 +351,6 @@ class Experiment:
         # Store matplot-plot
         plt.savefig(os.path.join(self.plots_dir, "prep-data.png"))
 
-    def _matplot_prep_forward(self):
-        # Set figure size and create subplots
-        fig, (ax1, ax2) = plt.subplots(
-            1, 2, figsize=(12, 6), sharey=False, sharex=False
-        )
-
-        # Plot forward S on the left subplot
-        ax1.set_title("$\\tau$-Space")
-        ax1.plot(
-            self.prep.tau,
-            self.prep.forwardModifiedS,
-            label="$L[S](\\tau)$",
-        )
-        ax1.plot(
-            self.prep.tau,
-            self.prep.modifiedF,
-            label="$F(\\tau)$",
-            color="black",
-            linestyle="--",
-        )
-        ax1.set_xlabel("$\\tau$")
-        ax1.set_ylabel("Laplace Transform")
-        ax1.legend()
-        ax1.grid(True)
-
-        # Plot forward S abs error on the right subplot
-        ax2.set_title("$\\tau$-Space")
-        ax2.plot(
-            self.prep.tau,
-            self.prep.forwardModifiedSAbsError,
-            label="$|L[S](\\tau) - F(\\tau)|$",
-        )
-        ax2.set_xlabel("$\\tau$")
-        ax2.set_ylabel("Absolute Error")
-        ax2.legend()
-        ax2.grid(True)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Store matplot-plot
-        plt.savefig(os.path.join(self.plots_dir, "prep-forward.png"))
-
     def _plotly_prep_data(self):
         # Create a Plotly figure
         fig1 = go.Figure()
@@ -368,6 +396,49 @@ class Experiment:
 
         return [fig1, fig2]
 
+    def _matplot_prep_forward(self):
+        # Set figure size and create subplots
+        fig, (ax1, ax2) = plt.subplots(
+            1, 2, figsize=(12, 6), sharey=False, sharex=False
+        )
+
+        # Plot forward S on the left subplot
+        ax1.set_title("$\\tau$-Space")
+        ax1.plot(
+            self.prep.tau,
+            self.prep.forwardModifiedS,
+            label="$L[S](\\tau)$",
+        )
+        ax1.plot(
+            self.prep.tau,
+            self.prep.modifiedF,
+            label="$F(\\tau)$",
+            color="black",
+            linestyle="--",
+        )
+        ax1.set_xlabel("$\\tau$")
+        ax1.set_ylabel("Laplace Transform")
+        ax1.legend()
+        ax1.grid(True)
+
+        # Plot forward S abs error on the right subplot
+        ax2.set_title("$\\tau$-Space")
+        ax2.plot(
+            self.prep.tau,
+            self.prep.forwardModifiedSAbsError,
+            label="$|L[S](\\tau) - F(\\tau)|$",
+        )
+        ax2.set_xlabel("$\\tau$")
+        ax2.set_ylabel("Absolute Error")
+        ax2.legend()
+        ax2.grid(True)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Store matplot-plot
+        plt.savefig(os.path.join(self.plots_dir, "prep-forward.png"))
+
     def _plotly_prep_forward(self):
         # Create a Plotly figure
         fig1 = go.Figure()
@@ -380,7 +451,7 @@ class Experiment:
                 y=self.prep.modifiedF,
                 mode="lines",
                 name=f"F(τ)",
-                line=dict(dash='dash'),
+                line=dict(dash="dash"),
             )
         )
         fig1.add_trace(
@@ -429,7 +500,7 @@ class Experiment:
             return False
 
         # Save config to JSON
-        save_to_json(self.config, self.config_path)
+        self._check_save_config()
 
         # Create the content for run.py
         run_py_content = f"""# This file was automatically generated by pylit.\n# Path: {self.path_run}\n# To run the experiment, execute this file with Python:\n# conda activate pylit\n# python {self.path_run}\n# conda deactivate\n\nfrom pylit.backend.core import Experiment\n\nname="{self.name}"\nworkspace="{self.workspace}"\nexp = Experiment(name, workspace)\nexp.fit_model()\nexp.plot_results()"""
@@ -442,68 +513,44 @@ class Experiment:
 
     def fit_model(self):
         self._init_model()
-        self._add_method_params()
         self._init_method()
         self._optimize()
-        self._assign_coeffs()
         self._evaluate()
 
     def _init_model(self):
-        modelParams = {
-            key: value
-            for key, value in self.config.modelParams.items()
-            if key not in self._model_attrs  # TODO _model_attrs is deprecated
-        }
-
-        model = getattr(models, self.config.modelName)(**modelParams)
-
+        modelParams = self.config.modelParams
+        model_class = getattr(models, self.config.modelName)
+        model = model_class(**modelParams)
         model.grid_points = self.prep.tau
-
-        print(model.grid_points.shape)
-
         model = getattr(models.scaling, self.config.scalingName)(
             lrm=model, **self.config.scalingParams
         )
-
         self.model = model
-
-    def _add_method_params(self):
-        if self.model is None:
-            raise ValueError(
-                "The model must be initiated first. Please use the init_model method"
-            )
-        # Add Evaluation Matrix
-        if "E" in self.config.methodParams:
-            self.config.methodParams["E"] = self.model(
-                self.prep.modifiedOmega, matrix=True
-            )
-        # Add Model Matrix
-        if "S" in self.config.methodParams:
-            self.config.methodParams["S"] = self.prep.modifiedS
-        # Add omegas
-        if "omegas" in self.config.methodParams:
-            self.config.methodParams["omegas"] = self.prep.modifiedOmega
 
     def _init_method(self):
         methodName = self.config.methodName
+        print("Method Name: ", methodName)
         methodParams = self.config.methodParams
-        lambd = methodParams["lambd"]
         method_func = getattr(methods, methodName)
-
+        method_func_params = extract_params(method_func).keys()
+        methodParams = {
+            key: value
+            for key, value in methodParams.items()
+            if key in method_func_params
+        }
+        self.config.methodParams = methodParams  # NOTE Update methodParams
+        lambd = methodParams["lambd"]
         if isinstance(lambd, float) or isinstance(lambd, int):
             lambd = np.array([lambd], dtype=FLOAT_DTYPE)
         else:
             lambd = np.array(lambd).astype(FLOAT_DTYPE)
-
         if not isinstance(lambd, ARRAY):
             raise ValueError("Lambd must be given as a list or a numpy array.")
-
         method = []
         for item in lambd:
             params_item = dict(methodParams)  # copy methodParams
             params_item["lambd"] = item  # replace lambd list with single lambd
-            params_item = list(params_item.values())  # convert to list
-            method.append(method_func(*params_item))  # append method with lambd=item
+            method.append(method_func(**params_item))  # append method with lambd=item
         self.method = method
 
     def _optimize(self):
@@ -511,17 +558,45 @@ class Experiment:
             raise ValueError("Method must be given as a list.")
         solutions = []
         optimize_func = getattr(optimize, self.config.optimName)
-        for item in self.method:
-            solutions.append(
-                optimize_func(
-                    R=self.model.regression_matrix,
-                    F=self.prep.modifiedF,
-                    x0=self.model.coeffs,
-                    method=item,
-                    maxiter=self.config.optimParams["maxiter"],
-                    tol=self.config.optimParams["tol"],
+        for i, item in enumerate(self.method):
+            x0 = self.model.coeffs  # Is zero defaulted to zero!
+            if not self.config.x0Reset and self.output is not None and self.output.coefficients is not None:
+                x0 = self.output.coefficients[i]
+
+            maxiter = self.config.optimParams["maxiter"]
+            tol = self.config.optimParams["tol"]
+
+            if self.config.adaptiveActive:
+                def optim_RFx0(R, F, x0):
+                    return optimize_func(
+                        R=R,
+                        F=F,
+                        x0=x0,
+                        maxiter=maxiter,
+                        tol=tol,
+                    )
+                steps = len(self.model.params[0])
+                solutions.append(
+                    optimize.adaptive_RF(
+                        R=self.model.regression_matrix,
+                        F=self.prep.modifiedF,
+                        x0=x0,
+                        steps=steps,
+                        optim_RFx0=optim_RFx0,
+                        residuum_mode=self.config.adaptiveResiduumMode,
+                    )
                 )
-            )
+            else:
+                solutions.append(
+                    optimize_func(
+                        R=self.model.regression_matrix,
+                        F=self.prep.modifiedF,
+                        x0=x0,
+                        method=item,
+                        maxiter=self.config.optimParams["maxiter"],
+                        tol=self.config.optimParams["tol"],
+                    )
+                )
 
         if self.output is None:
             self.output = Output()
@@ -534,20 +609,24 @@ class Experiment:
         self.output.residuals = np.array(
             [item.residuum for item in solutions], dtype=FLOAT_DTYPE
         )
+
         # Checkpoint: Store output to JSON
         save_to_json(self.output, self.output_path)
 
     def _evaluate(self):
-        self.output.valsF = np.array(
-            [item.forward() for item in self.model], dtype=FLOAT_DTYPE
-        )
-        self.output.valsS = np.array(
-            [item(self.prep.modifiedOmega) for item in self.model], dtype=FLOAT_DTYPE
-        )
-        self.output.integral = np.array(
-            [np.trapz(item, self.prep.modifiedOmega) for item in self.output.valsS],
-            dtype=FLOAT_DTYPE,
-        )
+
+        valsF, valsS, integral = [], [], []
+
+        for i, coeffs in enumerate(self.output.coefficients):
+            self.model.coeffs = coeffs
+            valsF.append(self.model.forward())
+            valsS.append(self.model(self.prep.modifiedOmega))
+            integral = np.append(integral, np.trapz(valsS[i], self.prep.modifiedOmega))
+
+        self.output.valsF = valsF
+        self.output.valsS = valsS
+        self.output.integral = integral
+
         # Checkpoint: Store output to JSON
         save_to_json(self.output, self.output_path)
 
@@ -568,47 +647,446 @@ class Experiment:
         return self._plotly_coeffs()
 
     def _matplot_coeffs(self):
-        pass
+        # Create a new figure and axis
+        fig, ax = plt.subplots()
+
+        # Display the coefficients array as an image
+        cax = ax.imshow(self.output.coefficients, aspect="auto", cmap="viridis")
+
+        # Add a color bar
+        fig.colorbar(cax)
+
+        # Add labels and title
+        ax.set_title("Coefficients")
+        ax.set_xlabel("Coefficient Index")
+        ax.set_ylabel("Sample Index")
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Store matplot-plot
+        plt.savefig(os.path.join(self.plots_dir, "res-coefficients.png"))
 
     def _plotly_coeffs(self):
-        pass
+        # Create a heatmap
+        heatmap = go.Heatmap(z=self.output.coefficients, colorscale="Viridis")
+
+        # Create a plotly figure
+        fig = go.Figure(data=[heatmap])
+
+        # Add labels and title
+        fig.update_layout(
+            title="Coefficients",
+            xaxis_title="Coefficient Index",
+            yaxis_title="Sample Index",
+        )
+
+        # Save the plot as an HTML file
+        fig.write_html(os.path.join(self.plots_dir, "res-coefficients.html"))
+
+        return [fig]
 
     def plot_model(self):
         self._matplot_model()
         return self._plotly_model()
 
     def _matplot_model(self):
-        pass
+        x_omega = self.prep.modifiedOmega
+        modifiedS = self.prep.modifiedS
+        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
+        max_vals = np.max(valsS, axis=0)
+        min_vals = np.min(valsS, axis=0)
+        avg_vals = np.mean(valsS, axis=0)
+
+        # Create a Matplotlib figure and axis
+        fig, ax = plt.subplots()
+
+        # Plot S
+        ax.plot(x_omega, modifiedS, label="S(ω)", color="blue")
+
+        # Plot Models
+        ax.plot(x_omega, min_vals, label="Sₗ(ω)", color="green")
+        ax.plot(x_omega, max_vals, label="Sᵤ(ω)", color="green")
+        ax.plot(x_omega, avg_vals, label="Sₐ(ω)", color="green")
+
+        # Fill between min and max values
+        ax.fill_between(x_omega, min_vals, max_vals, color="green", alpha=0.3)
+
+        # Add title and labels
+        ax.set_title("ω-Space")
+        ax.set_xlabel("ω")
+        ax.set_ylabel("S(ω)")
+
+        # Add legend
+        ax.legend(loc="upper right")
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Save the plot as an image file
+        plt.savefig(os.path.join(self.plots_dir, "res-model.png"))
 
     def _plotly_model(self):
-        pass
+        x_omega = self.prep.modifiedOmega
+        modifiedS = self.prep.modifiedS
+        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
+        max_vals = np.max(valsS, axis=0)
+        min_vals = np.min(valsS, axis=0)
+        avg_vals = np.mean(valsS, axis=0)
+
+        # Create a plotly figure
+        fig = go.Figure()
+
+        # Plot S
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=modifiedS,
+                mode="lines",
+                name=f"S(ω)",
+            )
+        )
+
+        # Plot Models
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=min_vals,
+                mode="lines",
+                name=f"Sₗ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=max_vals,
+                fill="tonexty",
+                mode="lines",
+                name=f"Sᵤ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=avg_vals,
+                mode="lines",
+                name=f"Sₐ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.update_layout(
+            title="ω-Space",
+            xaxis=dict(title="ω"),
+            yaxis=dict(title="S(ω)"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        fig.write_html(os.path.join(self.plots_dir, "res-model.html"))
+
+        return [fig]
 
     def plot_forward_model(self):
         self._matplot_forward_model()
         return self._plotly_forward_model()
 
     def _matplot_forward_model(self):
-        pass
+        x_omega = self.prep.tau
+        modifiedF = self.prep.modifiedF
+        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
+        max_vals = np.max(valsF, axis=0)
+        min_vals = np.min(valsF, axis=0)
+        avg_vals = np.mean(valsF, axis=0)
+
+        # Create a Matplotlib figure and axis
+        fig, ax = plt.subplots()
+
+        # Plot F
+        ax.plot(x_omega, modifiedF, label="F(τ)", color="blue")
+
+        # Plot Forward Models
+        ax.plot(x_omega, min_vals, label="Fₗ(τ)", color="green")
+        ax.plot(x_omega, max_vals, label="Fᵤ(τ)", color="green")
+        ax.plot(x_omega, avg_vals, label="Fₐ(τ)", color="green")
+
+        # Fill between min and max values
+        ax.fill_between(x_omega, min_vals, max_vals, color="green", alpha=0.3)
+
+        # Add title and labels
+        ax.set_title("τ-Space")
+        ax.set_xlabel("τ")
+        ax.set_ylabel("F(τ)")
+
+        # Add legend
+        ax.legend(loc="upper right")
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Save the plot as an image file
+        plt.savefig(os.path.join(self.plots_dir, "res-forward-model.png"))
 
     def _plotly_forward_model(self):
-        pass
+        x_omega = self.prep.tau
+        modifiedF = self.prep.modifiedF
+        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
+        max_vals = np.max(valsF, axis=0)
+        min_vals = np.min(valsF, axis=0)
+        avg_vals = np.mean(valsF, axis=0)
+
+        # Create a plotly figure
+        fig = go.Figure()
+
+        # Plot F
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=modifiedF,
+                mode="lines",
+                name=f"F(τ)",
+            )
+        )
+
+        # Plot Forward Models
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=min_vals,
+                mode="lines",
+                name=f"Fₗ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=max_vals,
+                fill="tonexty",
+                mode="lines",
+                name=f"Fᵤ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=avg_vals,
+                mode="lines",
+                name=f"Fₐ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.update_layout(
+            title="τ-Space",
+            xaxis=dict(title="τ"),
+            yaxis=dict(title="F(τ)"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        fig.write_html(os.path.join(self.plots_dir, "res-forward-model.html"))
+
+        return [fig]
 
     def plot_error_model(self):
         self._matplot_error_model()
         return self._plotly_error_model()
 
     def _matplot_error_model(self):
-        pass
+        x_omega = self.prep.modifiedOmega
+        modifiedS = self.prep.modifiedS
+        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
+        eps = np.array([np.abs(vals - modifiedS) for vals in valsS])
+        max_eps = np.max(eps, axis=0)
+        min_eps = np.min(eps, axis=0)
+        avg_eps = np.mean(eps, axis=0)
+
+        # Create a Matplotlib figure and axis
+        fig, ax = plt.subplots()
+
+        # Plot Models
+        ax.plot(x_omega, min_eps, label="εₗ(ω)", color="green")
+        ax.plot(x_omega, max_eps, label="εᵤ(ω)", color="green")
+        ax.plot(x_omega, avg_eps, label="εₐ(ω)", color="green")
+
+        # Fill between min and max values
+        ax.fill_between(x_omega, min_eps, max_eps, color="green", alpha=0.3)
+
+        # Add title and labels
+        ax.set_title("ω-Space")
+        ax.set_xlabel("ω")
+        ax.set_ylabel("ε(ω)")
+
+        # Add legend
+        ax.legend(loc="upper right")
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Save the plot as an image file
+        plt.savefig(os.path.join(self.plots_dir, "res-model-error.png"))
 
     def _plotly_error_model(self):
-        pass
+        x_omega = self.prep.modifiedOmega
+        modifiedS = self.prep.modifiedS
+        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
+        eps = np.array([np.abs(vals - modifiedS) for vals in valsS])
+        max_eps = np.max(eps, axis=0)
+        min_eps = np.min(eps, axis=0)
+        avg_eps = np.mean(eps, axis=0)
+
+        # Create a plotly figure
+        fig = go.Figure()
+
+        # Plot Models Error
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=min_eps,
+                mode="lines",
+                name=f"εₗ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=max_eps,
+                fill="tonexty",
+                mode="lines",
+                name=f"εᵤ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=avg_eps,
+                mode="lines",
+                name=f"εₐ(ω)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.update_layout(
+            title="ω-Space",
+            xaxis=dict(title="ω"),
+            yaxis=dict(title="ε(ω)"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        fig.write_html(os.path.join(self.plots_dir, "res-model-error.html"))
+
+        return [fig]
 
     def plot_error_forward_model(self):
         self._matplot_error_forward_model()
         return self._plotly_error_forward_model()
 
     def _matplot_error_forward_model(self):
-        pass
+        x_omega = self.prep.tau
+        modifiedF = self.prep.modifiedF
+        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
+        eps = np.array([np.abs(vals - modifiedF) for vals in valsF])
+        max_eps = np.max(eps, axis=0)
+        min_eps = np.min(eps, axis=0)
+        avg_eps = np.mean(eps, axis=0)
+
+        # Create a Matplotlib figure and axis
+        fig, ax = plt.subplots()
+
+        # Plot Models
+        ax.plot(x_omega, min_eps, label="εₗ(τ)", color="green")
+        ax.plot(x_omega, max_eps, label="εᵤ(τ)", color="green")
+        ax.plot(x_omega, avg_eps, label="εₐ(τ)", color="green")
+
+        # Fill between min and max values
+        ax.fill_between(x_omega, min_eps, max_eps, color="green", alpha=0.3)
+
+        # Add title and labels
+        ax.set_title("τ-Space")
+        ax.set_xlabel("τ")
+        ax.set_ylabel("ε(τ)")
+
+        # Add legend
+        ax.legend(loc="upper right")
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Save the plot as an image file
+        plt.savefig(os.path.join(self.plots_dir, "res-forward-model-error.png"))
 
     def _plotly_error_forward_model(self):
-        pass
+        x_omega = self.prep.tau
+        modifiedF = self.prep.modifiedF
+        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
+        eps = np.array([np.abs(vals - modifiedF) for vals in valsF])
+        max_eps = np.max(eps, axis=0)
+        min_eps = np.min(eps, axis=0)
+        avg_eps = np.mean(eps, axis=0)
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Plot Forward Models Error
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=min_eps,
+                mode="lines",
+                name=f"εₗ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=max_eps,
+                fill="tonexty",
+                mode="lines",
+                name=f"εᵤ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_omega,
+                y=avg_eps,
+                mode="lines",
+                name=f"εₐ(τ)",
+                line=dict(color=MODERN_GREEN),
+            )
+        )
+
+        fig.update_layout(
+            title="τ-Space",
+            xaxis=dict(title="τ"),
+            yaxis=dict(title="ε(τ)"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        fig.write_html(os.path.join(self.plots_dir, "res-forward-model-error.html"))
+
+        return [fig]

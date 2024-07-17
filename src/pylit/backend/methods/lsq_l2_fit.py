@@ -58,23 +58,23 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
 def _standard(S, E, lambd) -> Method:
     """Least Squares with L1 Fitness."""
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum((E @ x - S) ** 2)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean((E @ x - S) ** 2)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
+        n = R.shape[0]
+        return (R.T @ (R @ x - F) + lambd * E.T @ (E @ x - S)) / n
 
-        return R.T @ (R @ x - F) + lambd * E.T @ (E @ x - S)
-
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
@@ -90,10 +90,11 @@ def _standard(S, E, lambd) -> Method:
 
         return np.linalg.solve(A, b)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E.T @ E))
+        n = R.shape[0]
+        return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E.T @ E))
 
     return Method("lsq_l2_fit", f, grad_f, solution, lr, None)
 

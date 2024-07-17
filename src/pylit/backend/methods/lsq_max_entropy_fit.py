@@ -57,50 +57,55 @@ def _standard(S, E, lambd) -> Method:
     """Least Squares with Cross Entropy Fitness."""
 
     S = np.clip(S, a_min=0, a_max=None)  # Clip Non-negative
-    q = S / np.sum(S)  # Normalize
-    q_hat = np.clip(q, a_min=TOL_LOG, a_max=None)  # Clip Log
-    log_q = np.log(q_hat)  # Take Log
+    q = np.copy(S)
+    q = np.clip(q, a_min=TOL_LOG, a_max=None)  # Clip Log
+    log_q = np.log(q)  # Take Log
+    norm = np.linalg.norm(E) ** 2
 
-    n = E.shape[1]
-    norm = n**2 * np.linalg.norm(E) ** 2
-
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        m = E @ x  # Evaluate
-        m = np.clip(m, a_min=0, a_max=None)  # Clip Non-negative
-        p = m / np.sum(m)  # Normalize to one
-        p_hat = np.clip(p, a_min=TOL_LOG, a_max=None)  # Clip Log
-        log_p = np.log(p_hat)  # Take Log
+        p = E @ x  # Evaluate
+        p = np.clip(p, a_min=0, a_max=None)  # Clip Non-negative
+        log_p = np.log(p)  # Take Log
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * np.sum(p * (log_p - log_q))
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * np.mean(p * (log_p - log_q))
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
+        x = x.astype(np.float64)
+        R = R.astype(np.float64)
+        F = F.astype(np.float64)
+        
+        # Number of samples
+        n = len(F)
+        
+        # Compute p and log_p
+        p = E @ x
+        p = np.clip(p, a_min=0, a_max=None)
+        p_hat = np.clip(p, a_min=TOL_LOG, a_max=None)
+        log_p = np.log(p_hat)
+        
+        # Gradient of the first term
+        residual = R @ x - F
+        grad_L1 = (R.T @ residual) / n
+        
+        # Gradient of the second term
+        grad_L2 = lambd * (E.T @ (log_p - log_q + 1)) / n
 
-        m = E @ x  # Evaluate
-        m = np.clip(m, a_min=0, a_max=None)  # Clip Non-negative
-        p = m / np.sum(m)  # Normalize to one
-        p_hat = np.clip(p, a_min=TOL_LOG, a_max=None)  # Clip Log
-        log_p = np.log(p_hat)  # Take Log
-        J = (
-            E.T * np.sum(m) - np.sum(E.T, axis=1).reshape(-1, 1) @ m.reshape(1, -1)
-        ) / np.sum(m) ** 2
+        # Total gradient
+        grad = grad_L1 + grad_L2
+        return grad
 
-        return R.T @ (R @ x - F) + lambd * J @ (log_p - log_q + 1)
-
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
         # Solution is not available
         return None
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
         return 1 / (np.linalg.norm(R.T @ R) + lambd * norm)

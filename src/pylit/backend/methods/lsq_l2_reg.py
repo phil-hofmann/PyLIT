@@ -55,15 +55,15 @@ def _standard(lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum(x**2)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(x**2)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
-
-        return R.T @ (R @ x - F) + lambd * x
+        n = R.shape[0]
+        return (R.T @ (R @ x - F) + lambd * x) / n
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def solution(R, F, P):
@@ -72,9 +72,9 @@ def _standard(lambd) -> Method:
         P = P.astype(INT_DTYPE)
 
         # np.ix_ unsupported in numba
-        n = R.shape[1]
+        m = R.shape[1]
 
-        A = R.T @ R + lambd * np.eye(n)
+        A = R.T @ R + lambd * np.eye(m)
         A = jit_sub_mat_by_index_set(A, P)
 
         b = R.T @ F
@@ -85,8 +85,8 @@ def _standard(lambd) -> Method:
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        n = R.shape[1]
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(n)))
+        n, m = R.shape
+        return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
 
     return Method("lsq_l2_reg", f, grad_f, solution, lr, None)
 

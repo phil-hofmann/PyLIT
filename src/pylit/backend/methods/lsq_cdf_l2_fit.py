@@ -12,7 +12,7 @@ from pylit.global_settings import (
 )
 
 
-def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
     """
     Implements the wasserstein fitness. With the objectiv function
 
@@ -49,7 +49,7 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
 
     Parameters
     ----------
-    D : ARRAY
+    S : ARRAY
         Default Model.
     E : ARRAY
         Evaluation Matrix.
@@ -70,7 +70,7 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
 
     """
     # Type check
-    if not isinstance(D, ARRAY):
+    if not isinstance(S, ARRAY):
         raise TypeError("S must be an array.")
 
     if not isinstance(E, ARRAY):
@@ -90,7 +90,7 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     n = E.shape[1]
 
     # Get method
-    method = _standard(D, E, lambd) if not svd else _svd(D, E, lambd)
+    method = _standard(S, E, lambd) if not svd else _svd(S, E, lambd)
 
     # Compile
     alpha_, R_, F_, P_ = (
@@ -109,45 +109,55 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     return method
 
 
-def _standard(D, E, lambd) -> Method:
+def _standard(S, E, lambd) -> Method:
     """Implements the wasserstein fitness"""
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
-    def f(alpha, R, F) -> FLOAT_DTYPE:
-        alpha = alpha.astype(FLOAT_DTYPE)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    def f(x, R, F) -> FLOAT_DTYPE:
+        x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        E_alpha = E @ alpha
+        p = E @ x
+        n_vec = np.arange(1, len(p) + 1)
 
-        return 0.5 * np.sum((R @ alpha - F) ** 2) + lambd * 0.5 * np.sum(
-            np.cumsum((E_alpha - D) ** 2)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(
+            np.cumsum((p - S) ** 2) / n_vec
         )
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
-    def grad_f(alpha, R, F) -> ARRAY:
-        alpha = alpha.astype(FLOAT_DTYPE)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    def grad_f(x, R, F) -> ARRAY:
+        x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        E_alpha = E @ alpha
+        p = E @ x
+        n_vec = np.arange(1, len(p) + 1)
 
-        return R.T @ (R @ alpha - F) + lambd * np.sum(
-            np.dot(np.cumsum(E_alpha - D), np.tril(np.sum(E, axis=1)))
-        )
+        # Gradient of the first term
+        residual = R @ x - F
+        grad_L1 = (R.T @ residual) / len(F)
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+        # Gradient of the second term
+        cumsum_diff = np.cumsum(p - S)
+        grad_L2 = lambd * (E.T @ (cumsum_diff / n_vec)) / len(F)
+
+        # Total gradient
+        grad = grad_L1 + grad_L2
+        return grad
+
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
         # Solution is not available
         return None
 
-    @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
         n = R.shape[0]
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * n**2 * np.linalg.norm(E) ** 2)
+        return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E) ** 2)
 
-    return Method("lsq_l2_fit", f, grad_f, solution, lr, None)
+    return Method("lsq_cdf_l2_fit", f, grad_f, solution, lr, None)
 
 
 def _svd(S, E, lambd) -> Method:
