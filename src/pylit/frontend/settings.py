@@ -37,11 +37,13 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
             Param(
                 name="beta",
                 default=1.0,
+                my_type=FLOAT_DTYPE,
                 ignore=True,
             ),
             Param(
                 name="order",
                 default="0,1",
+                my_type=str,
                 ignore=True,
             ),
         ]
@@ -50,16 +52,28 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
 
 OPTIMIZER = Options(
     [
-        Option(ref="nn_nesterov", name="Non Negative Nesterov"),
-        Option(ref="nn_adam", name="Non Negative ADAM"),
-        # Option(ref="nn_bro", name="Non Negative Bro"),
+        Option(
+            ref="nn_nesterov",
+            name="Non Negative Nesterov",
+        ),
+        Option(
+            ref="nn_adam",
+            name="Non Negative ADAM",
+        ),
+        # Option(
+        #     ref="nn_bro",
+        #     name="Non Negative Bro",
+        # ),
     ]
 )
 
 OPTIM_PARAM_MAP = ParamMap(
     [
         Param(
-            name="maxiter", label="Maximal Iterations", my_type=INT_DTYPE, default=1000
+            name="maxiter",
+            label="Maximal Iterations",
+            my_type=INT_DTYPE,
+            default=1000,
         ),
         Param(
             name="tol",
@@ -68,17 +82,40 @@ OPTIM_PARAM_MAP = ParamMap(
             my_type=FLOAT_DTYPE,
             step=1e-30,
         ),
-        Param(name="S", ignore=True, default=True),
-        Param(name="R", ignore=True),
-        Param(name="F", ignore=True),
-        Param(name="x0", ignore=True),
-        Param(name="method", ignore=True),
+        Param(
+            name="S",
+            ignore=True,
+            my_type=ARRAY,
+            default=True,
+        ),
+        Param(
+            name="R",
+            ignore=True,
+            my_type=ARRAY,
+        ),
+        Param(
+            name="F",
+            ignore=True,
+            my_type=ARRAY,
+        ),
+        Param(
+            name="x0",
+            ignore=True,
+            my_type=ARRAY,
+        ),
+        Param(
+            name="method",
+            ignore=True,
+        ),
     ]
 )
 
 SCALINGS = Options(
     [
-        Option(ref="linear", name="Linear"),
+        Option(
+            ref="linear",
+            name="Linear",
+        ),
     ]
 )
 
@@ -96,13 +133,34 @@ SCALINGS_PARAM_MAP = ParamMap(
 
 METHODS = Options(
     [
-        Option(ref="lsq_l1_reg", name="Lasso Regularization"),
-        Option(ref="lsq_l2_reg", name="Ridge Regularization"),
-        Option(ref="lsq_tv_reg", name="Total Variation Regularization"),
-        Option(ref="lsq_var_reg", name="Variance Regularization"),
-        Option(ref="lsq_l2_fit", name="L2 Fitness"),
-        Option(ref="lsq_max_entropy_fit", name="Maximum Entropy Fitness"),
-        Option(ref="lsq_cdf_l2_fit", name="CDF L2 Fitness"),
+        Option(
+            ref="lsq_l1_reg",
+            name="Lasso Regularization",
+        ),
+        Option(
+            ref="lsq_l2_reg",
+            name="Ridge Regularization",
+        ),
+        Option(
+            ref="lsq_tv_reg",
+            name="Total Variation Regularization",
+        ),
+        Option(
+            ref="lsq_var_reg",
+            name="Variance Regularization",
+        ),
+        Option(
+            ref="lsq_l2_fit",
+            name="L2 Fitness",
+        ),
+        Option(
+            ref="lsq_max_entropy_fit",
+            name="Maximum Entropy Fitness",
+        ),
+        Option(
+            ref="lsq_cdf_l2_fit",
+            name="CDF L2 Fitness",
+        ),
     ]
 )
 
@@ -121,19 +179,43 @@ def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
                 upper_value=upper_value,
                 num_value=10,
             ),
-            Param(name="E", ignore=True),
-            Param(name="S", ignore=True),
-            Param(name="omegas", ignore=True),
+            Param(
+                name="E",
+                ignore=True,
+                my_type=ARRAY,
+            ),
+            Param(
+                name="S",
+                ignore=True,
+                my_type=ARRAY,
+            ),
+            Param(
+                name="omegas",
+                ignore=True,
+                my_type=ARRAY,
+            ),
         ]
     )
 
 
 NOISES_IID = Options(
     [
-        Option(ref="WhiteNoise", name="Gaussian"),
-        Option(ref="UniformNoise", name="Uniform"),
-        Option(ref="BernoulliNoise", name="Bernoulli"),
-        Option(ref="PoissonNoise", name="Poisson"),
+        Option(
+            ref="WhiteNoise",
+            name="Gaussian",
+        ),
+        Option(
+            ref="UniformNoise",
+            name="Uniform",
+        ),
+        Option(
+            ref="BernoulliNoise",
+            name="Bernoulli",
+        ),
+        Option(
+            ref="PoissonNoise",
+            name="Poisson",
+        ),
     ]
 )
 
@@ -180,8 +262,14 @@ NOISES_IID_PARAM_MAP = ParamMap(
 
 NOISES_CONV = Options(
     [
-        Option(ref="BinomKernel", name="Binomial"),
-        Option(ref="UniformKernel", name="Uniform"),
+        Option(
+            ref="BinomKernel",
+            name="Binomial",
+        ),
+        Option(
+            ref="UniformKernel",
+            name="Uniform",
+        ),
     ]
 )
 
@@ -193,6 +281,11 @@ NOISES_CONV_PARAM_MAP = ParamMap(
             default=0.5,
             step=0.01,
         ),
-        Param(name="window", my_type=INT_DTYPE, default=5, step=1),
+        Param(
+            name="window",
+            my_type=INT_DTYPE,
+            default=5,
+            step=1,
+        ),
     ]
 )

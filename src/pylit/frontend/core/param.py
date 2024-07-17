@@ -87,10 +87,11 @@ class Param:
 
     @property
     def value(self):
-        return self.default if self._value is None else self.my_type(self._value)
+        return self.default if self._value is None else self._value
 
     @value.setter
     def value(self, new_value):
+        # TODO somehow do automatic type setting here?!?
         self._value = new_value
 
     @property
@@ -153,18 +154,23 @@ class Param:
     
 
     def insert_value(self, value):
-        if self._my_type is None:
-            raise ValueError("The type of the parameter is not defined.") # TODO other handling?
-        elif self._my_type is not ARRAY and self._my_type is not list:
+        # if self._my_type is None:
+        #     raise ValueError("The type of the parameter is not defined.") # TODO other handling?
+        if type(value) not in [ARRAY, list]:
+            self.my_type = type(value)
             self.value = value
         else:
             # NOTE Only checks for linspace
             # TODO Check for other types or move somewhere else?!?
+            # self.my_type = ARRAY # NOTE If we uncomment here, the variation of lambda machanism is affected...
             num_value = len(value)
             lower_value = np.min(value)
             upper_value = np.max(value)
             linspace = np.linspace(lower_value, upper_value, num_value)
             if np.array_equal(value, linspace):
-                self.value = [lower_value, upper_value, num_value]
+                self.num_value = num_value
+                self.lower_value = lower_value
+                self.upper_value = upper_value
+                # self.value = [lower_value, upper_value, num_value] # NOTE...wrong!
             else:
                 raise ValueError("The given sequence is not a linspace sequence.")

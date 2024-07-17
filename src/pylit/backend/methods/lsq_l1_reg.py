@@ -1,7 +1,7 @@
 import numpy as np
 
 from numba import njit
-from pylit.backend.methods import Method
+from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
     FLOAT_DTYPE,
@@ -13,20 +13,17 @@ from pylit.global_settings import (
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(lambd: FLOAT_DTYPE = 1.0) -> Method:
 
     # Type check
     if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
         raise TypeError("lambd must be a float.")
 
-    if not isinstance(svd, bool):
-        raise TypeError("svd must be a bool.")
-
     # Type Conversion
     lambd = FLOAT_DTYPE(lambd)
 
     # Get method
-    method = _standard(lambd) if not svd else _svd(lambd)
+    method = _standard(lambd)
 
     # Compile
     x_, R_, F_, P_ = (
@@ -40,7 +37,6 @@ def get(lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
     _ = method.grad_f(x_, R_, F_)
     _ = method.solution(R_, F_, P_)
     _ = method.lr(R_)
-    _ = method.pr(R_) if method.pr is not None else None
 
     return method
 
@@ -87,13 +83,4 @@ def _standard(lambd) -> Method:
         n = R.shape[0]
         return n / (np.linalg.norm(R.T @ R) + lambd)
 
-    return Method("lsq_l1_reg", f, grad_f, solution, lr, None)
-
-
-def _svd(lambd) -> Method:
-    """Least Squares with L1 Regularization using SVD."""
-    pass
-
-
-if __name__ == "__main__":
-    pass
+    return Method("lsq_l1_reg", f, grad_f, solution, lr)

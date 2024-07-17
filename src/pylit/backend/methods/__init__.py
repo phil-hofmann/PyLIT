@@ -1,6 +1,3 @@
-# Classes
-from .method import Method
-
 # Methods: Regularization
 from .lsq_l1_reg import get as lsq_l1_reg
 from .lsq_l2_reg import get as lsq_l2_reg

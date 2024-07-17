@@ -42,15 +42,15 @@ def main():
     if "preprocessed" not in st.session_state:
         st.session_state["preprocessed"] = False
 
+    def init_experiment(name: str):
+        st.session_state["exp"] = Experiment(
+            workspace=st.session_state["workspace"],
+            name=name,
+            make=True,
+        )
+
     # Assign st.session_state["exp"] to a local variable for easy access
     if not st.session_state["exp"] or st.session_state["exp"] is None:
-
-        def init_experiment(name: str):
-            st.session_state["exp"] = Experiment(
-                workspace=st.session_state["workspace"],
-                name=name,
-                make=True,
-            )
 
         def on_change_name():
             init_experiment(
@@ -83,7 +83,7 @@ def main():
             st.error("Experiment object is not of type Experiment.")
             return
 
-        col1, col2 = st.columns([95, 5])
+        col1, col2, col3 = st.columns([95, 5, 5])
 
         with col1:
             st.write(
@@ -91,6 +91,12 @@ def main():
                 unsafe_allow_html=True,
             )
         with col2:
+            if st.button("🔄"):
+                name = exp.name
+                st.session_state["exp"] = None
+                init_experiment(name)
+                st.rerun()
+        with col3:
             if st.button("❌"):
                 # TODO ask before leaving ...
                 st.session_state["exp"] = None
@@ -186,6 +192,8 @@ def main():
                     )
 
                     if exp.config.noiseActive:
+                        noiseName = exp.config.noiseName
+                        noiseName = "" if noiseName is None else noiseName
                         noiseParams = exp.config.noiseParams
                         noiseParams = {} if noiseParams is None else noiseParams
                         st.markdown(
@@ -201,6 +209,7 @@ def main():
                             options=NOISES_IID,
                             ref=noise_iid,
                             param_map=NOISES_IID_PARAM_MAP.insert_values(noiseParams),
+                            name=noiseName,
                         )
 
                 with col2:
@@ -215,6 +224,10 @@ def main():
                         )
 
                         if exp.config.noiseConvActive:
+                            noiseConvName = exp.config.noiseConvName
+                            noiseConvName = (
+                                "" if noiseConvName is None else noiseConvName
+                            )
                             noiseConvParams = exp.config.noiseConvParams
                             noiseConvParams = (
                                 {} if noiseConvParams is None else noiseConvParams
@@ -234,6 +247,7 @@ def main():
                                 param_map=NOISES_CONV_PARAM_MAP.insert_values(
                                     noiseConvParams
                                 ),
+                                name=noiseConvName,
                             )
 
                 st.markdown("<hr style='margin:0;padding:0'/>", unsafe_allow_html=True)
@@ -290,9 +304,10 @@ def main():
                         f"""<br/><b>Method</b><hr style='margin:0;padding:0'/>""",
                         unsafe_allow_html=True,
                     )
+                    methodName = exp.config.methodName
+                    methodName = "" if methodName is None else methodName
                     methodParams = exp.config.methodParams
                     methodParams = {} if methodParams is None else methodParams
-                    # INSERT Standard values for lambd !
                     (
                         exp.config.methodName,
                         exp.config.methodParams,
@@ -301,6 +316,7 @@ def main():
                         options=METHODS,
                         ref=methods,
                         param_map=METHODS_PARAM_MAP(exp).insert_values(methodParams),
+                        name=methodName,
                     )
                 # --- --- --- #
 
@@ -310,6 +326,8 @@ def main():
                         "<br/><b>Optimizer</b><hr style='margin:0;padding:0'/>",
                         unsafe_allow_html=True,
                     )
+                    optimName = exp.config.optimName
+                    optimName = "" if optimName is None else optimName
                     optimParams = exp.config.optimParams
                     optimParams = {} if optimParams is None else optimParams
                     (
@@ -320,6 +338,7 @@ def main():
                         options=OPTIMIZER,
                         ref=optimize,
                         param_map=OPTIM_PARAM_MAP.insert_values(optimParams),
+                        name=optimName,
                     )
                     exp.config.x0Reset = st.toggle(
                         "Reset x0",
@@ -343,6 +362,8 @@ def main():
                     f"""<br/><b>Model</b><hr style='margin:0;padding:0'/>""",
                     unsafe_allow_html=True,
                 )
+                scalingName = exp.config.scalingName
+                scalingName = "" if scalingName is None else scalingName
                 scalingParams = exp.config.scalingParams
                 scalingParams = {} if scalingParams is None else scalingParams
                 (
@@ -354,10 +375,13 @@ def main():
                     ref=models.scaling,
                     param_map=SCALINGS_PARAM_MAP.insert_values(scalingParams),
                     label="Scaling",
+                    name=scalingName,
                 )
+
+                modelName = exp.config.modelName
+                modelName = "" if modelName is None else modelName
                 modelParams = exp.config.modelParams
                 modelParams = {} if modelParams is None else modelParams
-
                 (
                     exp.config.modelName,
                     exp.config.modelParams,
@@ -366,6 +390,7 @@ def main():
                     options=MODELS,
                     ref=models,
                     param_map=MODEL_PARAM_MAP(exp).insert_values(modelParams),
+                    name=modelName,
                 )
 
         with tab5:
@@ -436,7 +461,11 @@ def main():
                 if exp.output.coefficients is not None and exp.config.plot_coeffs:
                     DisplayFigure(exp.plot_coeffs())
                     displayed_any = True
-                if exp.prep.modifiedS is not None and exp.output.valsS is not None and exp.config.plot_model:
+                if (
+                    exp.prep.modifiedS is not None
+                    and exp.output.valsS is not None
+                    and exp.config.plot_model
+                ):
                     DisplayFigure(exp.plot_model())
                     displayed_any = True
                 if (

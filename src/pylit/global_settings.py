@@ -13,6 +13,6 @@ MAX_ITER = 100
 TOL_LOG = 1e-3
 
 # Numba
-CACHE = True
+CACHE = False
 PARALLEL = False
 FASTMATH = True

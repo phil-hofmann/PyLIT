@@ -1,29 +1,23 @@
-import pylit
 import numpy as np
 
 from numba import njit
-from pylit.backend.methods import Method
+from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
     FLOAT_DTYPE,
     INT_DTYPE,
-    TOL_LOG,
-    CACHE,
     PARALLEL,
     FASTMATH,
 )
 
 
-def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     # Type check
     if not isinstance(E, ARRAY):
         raise TypeError("E must be an array.")
 
     if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
         raise TypeError("lambd must be a float.")
-
-    if not isinstance(svd, bool):
-        raise TypeError("svd must be a bool.")
 
     # Type Conversion
     E = E.astype(FLOAT_DTYPE)
@@ -33,7 +27,7 @@ def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) ->
     n = E.shape[1]
 
     # Get method
-    method = _standard(omegas, E, lambd) if not svd else _svd(omegas, E, lambd)
+    method = _standard(omegas, E, lambd)
 
     # Compile
     x_, R_, F_, P_ = (
@@ -47,7 +41,6 @@ def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) ->
     _ = method.grad_f(x_, R_, F_)
     _ = method.solution(R_, F_, P_)
     _ = method.lr(R_)
-    _ = method.pr(R_) if method.pr is not None else None
 
     return method
 
@@ -103,14 +96,4 @@ def _standard(omegas, E, lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         return 1 / (np.linalg.norm(R.T @ R) + lambd * norm)
 
-    return Method("lsq_var_reg_fit", f, grad_f, solution, lr, None)
-
-
-def _svd(omegas, S, E, lambd) -> Method:
-    """Least Squares with Cross Entropy Fitness using SVD."""
-    pass
-
-
-if __name__ == "__main__":
-
-    pass
+    return Method("lsq_var_reg_fit", f, grad_f, solution, lr)

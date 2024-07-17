@@ -1,20 +1,18 @@
-import pylit
 import numpy as np
 
 from numba import njit
-from pylit.backend.methods import Method
+from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
     FLOAT_DTYPE,
     INT_DTYPE,
-    CACHE,
     PARALLEL,
     FASTMATH,
 )
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     # Type check
     if not isinstance(S, ARRAY):
         raise TypeError("S must be an array.")
@@ -25,9 +23,6 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
         raise TypeError("lambd must be a float.")
 
-    if not isinstance(svd, bool):
-        raise TypeError("svd must be a bool.")
-
     # Type Conversion
     E = E.astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
@@ -36,7 +31,7 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     n = E.shape[1]
 
     # Get method
-    method = _standard(S, E, lambd) if not svd else _svd(S, E, lambd)
+    method = _standard(S, E, lambd)
 
     # Compile
     x_, R_, F_, P_ = (
@@ -50,7 +45,6 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     _ = method.grad_f(x_, R_, F_)
     _ = method.solution(R_, F_, P_)
     _ = method.lr(R_)
-    _ = method.pr(R_) if method.pr is not None else None
 
     return method
 
@@ -96,13 +90,4 @@ def _standard(S, E, lambd) -> Method:
         n = R.shape[0]
         return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E.T @ E))
 
-    return Method("lsq_l2_fit", f, grad_f, solution, lr, None)
-
-
-def _svd(S, E, lambd) -> Method:
-    """Least Squares with L1 Fitness using SVD."""
-    pass
-
-
-if __name__ == "__main__":
-    pass
+    return Method("lsq_l2_fit", f, grad_f, solution, lr)

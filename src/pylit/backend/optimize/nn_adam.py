@@ -2,6 +2,7 @@ import numpy as np
 import numba as nb
 
 from pylit.backend.core import Solution
+from pylit.backend.utils import svd_optim
 from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE, TOL
 
 
@@ -13,6 +14,7 @@ def nn_adam(
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
     protocol: bool = False,
+    svd: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the ADAM gradient method."""
 
@@ -36,8 +38,8 @@ def nn_adam(
         x0,
         maxiter,
         tol,
-        method.pr,
         protocol,
+        svd,
     )
     fx = method.f(x, R, F)
 
@@ -45,7 +47,7 @@ def nn_adam(
 
 
 @nb.njit
-def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, pr, protocol):
+def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd):
     n = len(x0)
     beta1 = 0.9
     beta2 = 0.999
@@ -55,6 +57,10 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, pr, protocol):
     x = np.copy(x0)
     fx = 0.0
     lr_ = lr(R)
+    V = None
+
+    if svd:
+        R, F, x0, V = svd_optim(R, F, x0)
 
     for k in range(maxiter):
         grad = grad_f(x, R, F)
@@ -65,14 +71,15 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, pr, protocol):
         x -= lr_ * m_hat / (np.sqrt(v_hat) + eps)
 
         # Non-negativity constraint
-        if pr is None:
+        if V is None:
             # Without projection
             x[x < 0.0] = 0.0
 
         else:
             # With projection
-            x_pr = pr(x)
-            x[x_pr < 0.0] = 0.0
+            x = V @ x
+            x[x < 0.0] = 0.0
+            x = V.T @ x
 
         # Check tolerance
         fx1 = f(x, R, F)
@@ -83,35 +90,4 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, pr, protocol):
         if protocol:
             print("step:", k + 1, "of", maxiter)
 
-    return x if pr is None else pr(x)
-
-
-if __name__ == "__main__":
-
-    # Example usage
-    R = np.random.rand(100, 10)
-    F = np.random.rand(100)
-
-    @nb.njit
-    def f(x, R, F):
-        return 0.5 * np.sum((R @ x - F) ** 2)
-
-    @nb.njit
-    def grad_f(x, R, F):
-        return R.T @ (R @ x - F)
-
-    @nb.njit
-    def lr(R):
-        return 1 / np.linalg.norm(R, 1)
-
-    x0 = np.random.rand(10)
-    maxiter = 1000
-    tol = 1e-6
-
-    @nb.njit
-    def pr(x):
-        return x
-
-    protocol = False
-    res = _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, pr, protocol)
-    print(res)
+    return x if V is None else V @ x

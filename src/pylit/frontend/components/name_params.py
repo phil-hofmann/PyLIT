@@ -13,19 +13,20 @@ def NameParams(
     ref,
     param_map: ParamMap = None,
     label: str = "Name",
+    name: str="",
 ):
 
     my_id_name = f"{my_id}_name"
 
     if my_id not in st.session_state:
-        st.session_state[my_id] = {"name": "", "params": {}}
+        st.session_state[my_id] = {"name": name, "params": {}}
 
     # Select a name
     st.selectbox(
         label=label,
         options=options(name=True),
         placeholder=f"Select an option",
-        index=0,
+        index=options.index_of(name),
         key=my_id_name,
     )
 
@@ -41,11 +42,10 @@ def NameParams(
             if param_map is not None and param_name in param_map:
                 mapped_param = param_map[param_name]
                 my_id_param_variation = f"{my_id_param}_variation"
-
                 if mapped_param.ignore:
                     st.session_state[my_id]["params"][param_name] = mapped_param.default
                 elif mapped_param.variation:
-                    toggle_value = mapped_param.value is not None and mapped_param.value is not FLOAT_DTYPE and mapped_param.value is not float
+                    toggle_value = mapped_param.value is not None and type(mapped_param.value) not in [FLOAT_DTYPE, float]
                     st.toggle(
                         key=my_id_param_variation,
                         label=f"Variation of {mapped_param.name}",

@@ -34,7 +34,7 @@ def adaptive_RF(
 
 
 # NOTE The truncation of x0 as initial guess is not optimal ...
-@nb.njit
+# @nb.njit # NOTE: Not possible because optim_RFx0 is not a numba function
 def _adaptive_RF(
     R,
     F,
@@ -84,7 +84,7 @@ def _adaptive_RF(
         next_features = np.concatenate([features, add_features])
         R_ = R[:, next_features]
         x0_ = x0[next_features]
-        res = optim_RFx0(R=R_, F=F, x0=x0)  # is of type solution
+        res = optim_RFx0(R=R_, F=F, x0=x0_)  # is of type solution
         x_, eps_, residuum_ = res.x, res.eps, res.residuum
 
         adapt = False
@@ -106,4 +106,4 @@ def _adaptive_RF(
     x_final[features] = x
 
     # Return the solution
-    return x, eps, residuum
+    return x_final, eps, residuum

@@ -390,3 +390,13 @@ def trapz_mat(x: ARRAY):
     np.fill_diagonal(trapz_mat[:, 1:], dx)
 
     return trapz_mat
+
+@njit
+def svd_optim(R: ARRAY, F: ARRAY, x0: ARRAY):
+    U, S_diag, VT = np.linalg.svd(R)
+    S = np.zeros_like(R)
+    np.fill_diagonal(S, S_diag)
+    V, UT = VT.T, U.T
+    F_prime = np.copy(UT @ F)
+    x0_prime = VT @ x0
+    return S, F_prime, x0_prime, V

@@ -18,6 +18,7 @@ class Configuration:
     noiseConvParams: dict = field(default_factory=dict)
     methodName: str = ""
     methodParams: dict = field(default_factory=dict)
+    svd: bool = False
     optimName: str = ""
     optimParams: dict = field(default_factory=dict)
     x0Reset: bool = False
@@ -32,7 +33,6 @@ class Configuration:
     plot_forward_model: bool = True
     plot_error_model: bool = True
     plot_error_forward_model: bool = True
-
 
 
 @dataclass
@@ -63,6 +63,17 @@ class Output:
     eps: ARRAY = field(default_factory=empty_array)
     residuals: ARRAY = field(default_factory=empty_array)
     integral: ARRAY = field(default_factory=empty_array)
+
+
+@dataclass
+class Method:
+    """Represents a method for solving an optimization problem."""
+
+    name: str
+    f: callable
+    grad_f: callable
+    solution: callable
+    lr: callable
 
 
 @dataclass

@@ -1,29 +1,24 @@
-import pylit
 import numpy as np
 
 from numba import njit
-from pylit.backend.methods import Method
+from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
     FLOAT_DTYPE,
     INT_DTYPE,
-    CACHE,
     PARALLEL,
     FASTMATH,
 )
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     # Type check
     if not isinstance(E, ARRAY):
         raise TypeError("E must be an array.")
 
     if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
         raise TypeError("lambd must be a float.")
-
-    if not isinstance(svd, bool):
-        raise TypeError("svd must be a bool.")
 
     # Type Conversion
     E = E.astype(FLOAT_DTYPE)
@@ -34,7 +29,7 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
     TV = (E[: len(E) - 1] - E[1 : len(E)]) / len(E)
 
     # Get method
-    method = _standard(TV, lambd) if not svd else _svd(TV, lambd)
+    method = _standard(TV, lambd)
 
     # Compile
     x_, R_, F_, P_ = (
@@ -48,7 +43,6 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
     _ = method.grad_f(x_, R_, F_)
     _ = method.solution(R_, F_, P_)
     _ = method.lr(R_)
-    _ = method.pr(R_) if method.pr is not None else None
 
     return method
 
@@ -93,13 +87,4 @@ def _standard(TV, lambd) -> Method:
         n = R.shape[0]
         return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(TV.T @ TV))
 
-    return Method("lsq_tv_reg", f, grad_f, solution, lr, None)
-
-
-def _svd(TV, lambd) -> Method:
-    """Least Squares with Total Variation Regularization using SVD."""
-    pass
-
-
-if __name__ == "__main__":
-    pass
+    return Method("lsq_tv_reg", f, grad_f, solution, lr)

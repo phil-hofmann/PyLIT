@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import numba as nb
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from pylit.backend import models, methods, optimize
@@ -512,14 +513,17 @@ class Experiment:
         return True
 
     def fit_model(self):
-        self._init_model()
+        self._init_model(print_name=True)
         self._init_method()
         self._optimize()
         self._evaluate()
 
-    def _init_model(self):
+    def _init_model(self, print_name=False):
+        modelName = self.config.modelName
+        if print_name:
+            print("Model Name: ", modelName)
         modelParams = self.config.modelParams
-        model_class = getattr(models, self.config.modelName)
+        model_class = getattr(models, modelName)
         model = model_class(**modelParams)
         model.grid_points = self.prep.tau
         model = getattr(models.scaling, self.config.scalingName)(
@@ -554,49 +558,68 @@ class Experiment:
         self.method = method
 
     def _optimize(self):
+        optimName = self.config.optimName
+        print("Optimization Name: ", optimName)
         if not isinstance(self.method, list):
             raise ValueError("Method must be given as a list.")
         solutions = []
-        optimize_func = getattr(optimize, self.config.optimName)
+        optimize_func = getattr(optimize, optimName)
         for i, item in enumerate(self.method):
             x0 = self.model.coeffs  # Is zero defaulted to zero!
-            if not self.config.x0Reset and self.output is not None and self.output.coefficients is not None:
+            R = self.model.regression_matrix
+            F = self.prep.modifiedF
+            m = R.shape[1]
+            if (
+                not self.config.x0Reset
+                and self.output is not None
+                and self.output.coefficients is not None
+                and len(self.output.coefficients[i]) == m # NOTE else the model parameters have changed!
+            ):
                 x0 = self.output.coefficients[i]
 
             maxiter = self.config.optimParams["maxiter"]
             tol = self.config.optimParams["tol"]
+            protocol = self.config.optimParams["protocol"]
+            svd = self.config.optimParams["svd"]
 
             if self.config.adaptiveActive:
+
                 def optim_RFx0(R, F, x0):
                     return optimize_func(
                         R=R,
                         F=F,
                         x0=x0,
+                        method=item,
                         maxiter=maxiter,
                         tol=tol,
+                        protocol=protocol,
+                        svd=svd,
                     )
+
                 steps = len(self.model.params[0])
-                solutions.append(
-                    optimize.adaptive_RF(
-                        R=self.model.regression_matrix,
-                        F=self.prep.modifiedF,
-                        x0=x0,
-                        steps=steps,
-                        optim_RFx0=optim_RFx0,
-                        residuum_mode=self.config.adaptiveResiduumMode,
-                    )
+                solution = optimize.adaptive_RF(
+                    R=R,
+                    F=F,
+                    x0=x0,
+                    steps=steps,
+                    optim_RFx0=optim_RFx0,
+                    residuum_mode=self.config.adaptiveResiduumMode,
                 )
+
+                solutions.append(solution)
             else:
-                solutions.append(
-                    optimize_func(
-                        R=self.model.regression_matrix,
-                        F=self.prep.modifiedF,
-                        x0=x0,
-                        method=item,
-                        maxiter=self.config.optimParams["maxiter"],
-                        tol=self.config.optimParams["tol"],
-                    )
+                solution = optimize_func(
+                    R=R,
+                    F=F,
+                    x0=x0,
+                    method=item,
+                    maxiter=maxiter,
+                    tol=tol,
+                    protocol=protocol,
+                    svd=svd,
                 )
+
+                solutions.append(solution)
 
         if self.output is None:
             self.output = Output()

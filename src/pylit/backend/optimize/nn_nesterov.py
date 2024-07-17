@@ -1,6 +1,7 @@
 import numpy as np
 import numba as nb
 from pylit.backend.core import Solution
+from pylit.backend.utils import svd_optim
 from pylit.global_settings import FLOAT_DTYPE, INT_DTYPE, ARRAY, TOL
 
 
@@ -12,6 +13,7 @@ def nn_nesterov(
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
     protocol: bool = False,
+    svd: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the Nesterov's accelerated gradient method.
 
@@ -57,8 +59,8 @@ def nn_nesterov(
         method.lr,
         maxiter,
         tol,
-        method.pr,
         protocol,
+        svd,
     )
     fx = method.f(x, R, F)
 
@@ -66,9 +68,9 @@ def nn_nesterov(
     return Solution(x, fx, FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2)))
 
 
-@nb.njit # TODO uncomment
+@nb.njit
 def _nn_nesterov_subroutine(
-    R, F, f, grad_f, x0, lr, maxiter, tol, pr, protocol
+    R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd
 ) -> ARRAY:
 
     # Initialize variables:
@@ -80,6 +82,11 @@ def _nn_nesterov_subroutine(
     theta = 1.0
     fy = 0.0
     lr_ = lr(R)
+    V = None
+
+    # Singular Value Decomposition:
+    if svd:
+        R, F, x0, V = svd_optim(R, F, x0)
 
     # Subroutine implementation:
     for k in range(maxiter):
@@ -90,14 +97,15 @@ def _nn_nesterov_subroutine(
         y = (1 - theta) * x + theta * v
 
         # Non-negativity constraint
-        if pr is None:
+        if V is None:
             # Without projection
             y[y < 0.0] = 0.0
 
         else:
             # With projection
-            y_pr = pr(y)
-            y[y_pr < 0.0] = 0.0
+            y = V @ y
+            y[y < 0.0] = 0.0
+            y = V.T @ y
 
         # Check tolerance
         # (Checking for the gradient is not useful since the gradient could be still large, due to the projection onto ">=0",
@@ -117,7 +125,7 @@ def _nn_nesterov_subroutine(
         if protocol:
             print("step: " + str(k + 1) + " of " + str(maxiter))
 
-    return y if pr is None else pr(y)
+    return y if V is None else V @ y
 
 
 if __name__ == "__main__":

@@ -1,18 +1,17 @@
 import numpy as np
 
 from numba import njit
-from pylit.backend.methods import Method
+from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
     FLOAT_DTYPE,
     INT_DTYPE,
-    CACHE,
     PARALLEL,
     FASTMATH,
 )
 
 
-def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Method:
+def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     """
     Implements the wasserstein fitness. With the objectiv function
 
@@ -55,8 +54,6 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
         Evaluation Matrix.
     lambd : FLOAT_DTYPE, optional
         Parameter. The default is 1.0.
-    svd : bool, optional
-        Wether SVD should be used or not. The default is False.
 
     Raises
     ------
@@ -79,9 +76,6 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
         raise TypeError("lambd must be a float.")
 
-    if not isinstance(svd, bool):
-        raise TypeError("svd must be a bool.")
-
     # Type Conversion
     E = E.astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
@@ -90,7 +84,7 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     n = E.shape[1]
 
     # Get method
-    method = _standard(S, E, lambd) if not svd else _svd(S, E, lambd)
+    method = _standard(S, E, lambd)
 
     # Compile
     alpha_, R_, F_, P_ = (
@@ -104,7 +98,6 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0, svd: bool = False) -> Meth
     _ = method.grad_f(alpha_, R_, F_)
     _ = method.solution(R_, F_, P_)
     _ = method.lr(R_)
-    _ = method.pr(R_) if method.pr is not None else None
 
     return method
 
@@ -120,7 +113,7 @@ def _standard(S, E, lambd) -> Method:
 
         p = E @ x
         n_vec = np.arange(1, len(p) + 1)
-
+        
         return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(
             np.cumsum((p - S) ** 2) / n_vec
         )
@@ -154,24 +147,7 @@ def _standard(S, E, lambd) -> Method:
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        n = R.shape[0]
+        n = R.shape[0] # TODO put n below?? TEST !
         return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E) ** 2)
 
-    return Method("lsq_cdf_l2_fit", f, grad_f, solution, lr, None)
-
-
-def _svd(S, E, lambd) -> Method:
-    """Least Squares with L1 Fitness using SVD."""
-    pass
-
-
-if __name__ == "__main__":
-
-    # S = np.random.rand(10)
-    # E = np.random.rand(10, 20) + 1
-
-    # method = get(S, E)
-
-    # method.grad_f(np.zeros(20), np.eye(20), np.zeros(20))
-
-    pass
+    return Method("lsq_cdf_l2_fit", f, grad_f, solution, lr)
