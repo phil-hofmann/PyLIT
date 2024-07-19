@@ -46,6 +46,7 @@ def NameParams(
                     st.session_state[my_id]["params"][param_name] = mapped_param.default
                 elif mapped_param.variation:
                     toggle_value = mapped_param.value is not None and type(mapped_param.value) not in [FLOAT_DTYPE, float]
+                    # st.write("value = ", mapped_param.value) # TODO: Remove
                     st.toggle(
                         key=my_id_param_variation,
                         label=f"Variation of {mapped_param.name}",

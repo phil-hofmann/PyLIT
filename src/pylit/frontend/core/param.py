@@ -171,6 +171,7 @@ class Param:
                 self.num_value = num_value
                 self.lower_value = lower_value
                 self.upper_value = upper_value
+                self.value = value # TODO NOTE CHECK THAT!!!
                 # self.value = [lower_value, upper_value, num_value] # NOTE...wrong!
             else:
                 raise ValueError("The given sequence is not a linspace sequence.")
