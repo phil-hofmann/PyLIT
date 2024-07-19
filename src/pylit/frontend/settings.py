@@ -85,27 +85,32 @@ OPTIM_PARAM_MAP = ParamMap(
         Param(
             name="S",
             ignore=True,
-            my_type=ARRAY,
+            my_type=bool,
             default=True,
         ),
         Param(
             name="R",
             ignore=True,
-            my_type=ARRAY,
+            my_type=bool,
+            default=True,
         ),
         Param(
             name="F",
             ignore=True,
-            my_type=ARRAY,
+            my_type=bool,
+            default=True,
         ),
         Param(
             name="x0",
             ignore=True,
-            my_type=ARRAY,
+            my_type=bool,
+            default=True,
         ),
         Param(
             name="method",
             ignore=True,
+            my_type=bool,
+            default=True,
         ),
     ]
 )
@@ -182,17 +187,23 @@ def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
             Param(
                 name="E",
                 ignore=True,
-                my_type=ARRAY,
+                # my_type=ARRAY,
+                my_type=bool,
+                default=True
             ),
             Param(
                 name="S",
                 ignore=True,
-                my_type=ARRAY,
+                # my_type=ARRAY,
+                my_type=bool,
+                default=True,
             ),
             Param(
                 name="omegas",
                 ignore=True,
-                my_type=ARRAY,
+                # my_type=ARRAY,
+                my_type=bool,
+                default=True,
             ),
         ]
     )

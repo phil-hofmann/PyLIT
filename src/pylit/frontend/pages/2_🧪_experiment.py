@@ -1,6 +1,6 @@
 import numpy as np
 import streamlit as st
-
+from streamlit_js_eval import streamlit_js_eval
 from pylit.frontend.utils import settings_manager
 from pylit.backend import methods, optimize, models
 from pylit.backend.core import (
@@ -98,10 +98,8 @@ def main():
                 st.rerun()
         with col3:
             if st.button("❌"):
-                # TODO ask before leaving ...
-                st.session_state["exp"] = None
-                st.session_state["open_experiment"] = st.session_state["workspace"]
-                st.rerun()  # NOTE simple solution -- poor state handling
+                # Page reload TODO: solve this in a better way
+                streamlit_js_eval(js_expressions="parent.window.location.reload()")
 
         st.write(
             "<hr style='margin:0;padding:0;padding-top:0px;'/>",
@@ -308,6 +306,7 @@ def main():
                     methodName = "" if methodName is None else methodName
                     methodParams = exp.config.methodParams
                     methodParams = {} if methodParams is None else methodParams
+                    # st.write(methodParams) TODO Remove
                     (
                         exp.config.methodName,
                         exp.config.methodParams,

@@ -166,6 +166,7 @@ class Experiment:
         # Method Params
         methodName = self.config.methodName
         if methodName != "":
+            self._init_model() # NOTE Initialize model!
             methodParams = self.config.methodParams
             method_func = getattr(methods, methodName)
             method_func_params = extract_params(method_func).keys()
@@ -497,6 +498,9 @@ class Experiment:
         return [fig1, fig2]
 
     def create_run(self):
+        # print(self.prep)
+        # print(self.config)
+
         if not self.ready_to_finish:
             return False
 

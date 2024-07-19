@@ -26,7 +26,7 @@ class ParamMap:
 
     def insert_values(self, values: dict):
         for key, value in values.items():
-            if not key in self and type(value):
+            if not key in self: # and type(value):
                 self[key] = Param(name=key)
                 self[key].insert_value(value)
             elif key in self and not self[key].ignore:

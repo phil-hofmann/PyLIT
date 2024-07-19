@@ -27,6 +27,8 @@ def ExportDataFiles(my_id: str, default_directory: str, export_path: str):
         and my_id_unselect_file_button in st.session_state
         and st.session_state[my_id_unselect_file_button]
     ):
+        st.session_state[my_id_column_data_exporter] = False # Reset the data_exported state
+        data_exported = False # Reset the data_exported state
         st.session_state[my_id_file_selector] = default_directory
 
     file_path = FileSelector(
