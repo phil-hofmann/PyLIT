@@ -15,5 +15,6 @@ dependencies:
   - numba
   - streamlit
   - pip:
+    - streamlit_js_eval
     - streamlit_option_menu
     - plotly
