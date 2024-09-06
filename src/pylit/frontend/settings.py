@@ -124,18 +124,6 @@ SCALINGS = Options(
     ]
 )
 
-SCALINGS_PARAM_MAP = ParamMap(
-    [
-        Param(
-            name="right_end_point",
-            ignore=True,
-            label="Right End Point",
-            default=1.0,
-            my_type=FLOAT_DTYPE,
-        ),
-    ]
-)
-
 METHODS = Options(
     [
         Option(

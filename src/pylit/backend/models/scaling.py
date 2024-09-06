@@ -9,7 +9,7 @@ from pylit.global_settings import FLOAT_DTYPE, ARRAY
 
 class LinearScaling:
 
-    def __init__(self, grid_points: ARRAY, right_end_point: FLOAT_DTYPE = 1.0):
+    def __init__(self, grid_points: ARRAY):
         """Initialize the LinearScaling.
 
         This is a parent class which is used to compute the scaling for Laplace transforms.
@@ -18,9 +18,6 @@ class LinearScaling:
         ----------
         grid_points : ARRAY
             The grid points.
-
-        right_end_point : FLOAT_DTYPE
-            The right end point of the scaling.
 
         Raises
         ------
@@ -37,16 +34,12 @@ class LinearScaling:
         if not len(grid_points.shape) == 1:
             raise ValueError("The grid points must be a one-dimensional array.")
 
-        if right_end_point < 0.0:
-            raise ValueError("The right end point must be greater or equal to zero.")
-
         # Type Conversion
         grid_points = grid_points.astype(FLOAT_DTYPE)
-        right_end_point = FLOAT_DTYPE(right_end_point)
 
         # Compute tau1 and tau0 - scaling endpoints
-        self._tau1 = np.max(grid_points) / right_end_point
-        self._tau0 = np.min(grid_points) / right_end_point
+        self._tau1 = np.max(grid_points)
+        self._tau0 = np.min(grid_points)
 
         # Compute the diffeomorphism of the interval
         self._psy, _ = diff_interval(self._tau1, self._tau0)
@@ -61,16 +54,16 @@ class LinearScaling:
 
     @property
     def psy(self) -> callable:
-        """The diffeomorphism onto the interval [0, b]."""
+        """The diffeomorphism onto the interval [0, 1]."""
         return self._psy
 
 
 class ForwardLinearScaling(LinearScaling):
 
-    def __init__(self, grid_points: ARRAY, right_end_point: FLOAT_DTYPE = 1.0):
+    def __init__(self, grid_points: ARRAY):
         """Initialize the Forward Scaling."""
 
-        super().__init__(grid_points, right_end_point)
+        super().__init__(grid_points)
 
     def __call__(self, func):
         """Returns the scaled version of the given Laplace transform.
@@ -93,10 +86,10 @@ class ForwardLinearScaling(LinearScaling):
 
 class InverseLinearRescaling(LinearScaling):
 
-    def __init__(self, grid_points: ARRAY, right_end_point: FLOAT_DTYPE = 1.0):
+    def __init__(self, grid_points: ARRAY):
         """Initialize the Inverse Rescaling."""
 
-        super().__init__(grid_points, right_end_point)
+        super().__init__(grid_points)
 
     def __call__(self, func):
         """Returns the rescaled version of the given inverse Laplace transform.
@@ -122,7 +115,7 @@ class InverseLinearRescaling(LinearScaling):
 
 
 def linear(
-    lrm: LinearRegressionModelABC, right_end_point: FLOAT_DTYPE = 1.0
+    lrm: LinearRegressionModelABC
 ) -> LinearRegressionModelABC:
     """Decorator for the Linear Regression Model.
 
@@ -133,9 +126,6 @@ def linear(
     lrm : LinearRegressionModel
         The  linear regression model.
 
-    right_end_point : FLOAT_DTYPE
-        The right end point ``r`` of the interval. Default is 1.0.
-
     Returns:
     --------
     LinearRegressionModel:
@@ -143,12 +133,12 @@ def linear(
 
     # Apply the scaling decorators to the regression matrix
     lrm._model_function = InverseLinearRescaling(
-        grid_points=lrm._grid_points, right_end_point=right_end_point
+        grid_points=lrm._grid_points
     )(lrm._model_function)
 
     # Apply the scaling decorators to the regression matrix
     lrm._compute_regression_matrix = ForwardLinearScaling(
-        grid_points=lrm._grid_points, right_end_point=right_end_point
+        grid_points=lrm._grid_points
     )(lrm._compute_regression_matrix)
 
     return lrm

@@ -17,4 +17,4 @@ def DisplayFigure(fig):
                 with cols[1]:
                     st.plotly_chart(fig[ub], use_container_width=True)
     else:
-        st.pyplot(fig)
+        raise Exception("Input must be a list of plotly figures.")

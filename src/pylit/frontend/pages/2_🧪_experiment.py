@@ -1,4 +1,3 @@
-import numpy as np
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 from pylit.frontend.utils import settings_manager
@@ -18,7 +17,6 @@ from pylit.frontend.settings import (
     OPTIMIZER,
     OPTIM_PARAM_MAP,
     SCALINGS,
-    SCALINGS_PARAM_MAP,
     MODELS,
     MODEL_PARAM_MAP,
 )
@@ -363,16 +361,13 @@ def main():
                 )
                 scalingName = exp.config.scalingName
                 scalingName = "" if scalingName is None else scalingName
-                scalingParams = exp.config.scalingParams
-                scalingParams = {} if scalingParams is None else scalingParams
                 (
                     exp.config.scalingName,
-                    exp.config.scalingParams,
+                    _,  # NOTE no params for scaling
                 ) = NameParams(
                     my_id=f"scaling",
                     options=SCALINGS,
                     ref=models.scaling,
-                    param_map=SCALINGS_PARAM_MAP.insert_values(scalingParams),
                     label="Scaling",
                     name=scalingName,
                 )
@@ -460,6 +455,7 @@ def main():
                 if exp.output.coefficients is not None and exp.config.plot_coeffs:
                     DisplayFigure(exp.plot_coeffs())
                     displayed_any = True
+
                 if (
                     exp.prep.modifiedS is not None
                     and exp.output.valsS is not None
@@ -467,6 +463,7 @@ def main():
                 ):
                     DisplayFigure(exp.plot_model())
                     displayed_any = True
+
                 if (
                     exp.prep.modifiedF is not None
                     and exp.output.valsF is not None
@@ -474,6 +471,7 @@ def main():
                 ):
                     DisplayFigure(exp.plot_forward_model())
                     displayed_any = True
+
                 if (
                     exp.prep.modifiedS is not None
                     and exp.output.valsS is not None
@@ -481,6 +479,7 @@ def main():
                 ):
                     DisplayFigure(exp.plot_error_model())
                     displayed_any = True
+
                 if (
                     exp.prep.modifiedF is not None
                     and exp.output.valsF is not None
