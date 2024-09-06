@@ -25,7 +25,6 @@ class Configuration:
     adaptiveActive: bool = False
     adaptiveResiduumMode: bool = False
     scalingName: str = ""
-    scalingParams: dict = field(default_factory=dict)
     modelName: str = ""
     modelParams: dict = field(default_factory=dict)
     plot_coeffs: bool = True

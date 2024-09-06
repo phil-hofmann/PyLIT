@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import numba as nb
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from pylit.backend import models, methods, optimize
@@ -49,6 +48,7 @@ class Experiment:
 
         if os.path.isfile(self.output_path):
             self._init_model()
+
         else:
             self.model = None
             self.method = None
@@ -105,8 +105,6 @@ class Experiment:
         if self.config.optimParams == {}:
             return False
         if self.config.scalingName == "":
-            return False
-        if self.config.scalingParams == {}:
             return False
         return True
 
@@ -175,11 +173,6 @@ class Experiment:
                 for key in method_func_params
             }  # Only keep methodParams that are in the method_func_params else set to None
             self.config.methodParams = methodParams  # Update methodParams
-            # Add Evaluation Matrix
-            if "E" in self.config.methodParams:
-                self.config.methodParams["E"] = self.model(
-                    self.prep.modifiedOmega, matrix=True
-                )
             # Add Model Matrix
             if "S" in self.config.methodParams:
                 self.config.methodParams["S"] = self.prep.modifiedS
@@ -214,7 +207,7 @@ class Experiment:
                 if key in noiseConv_func_params
             }
             self.config.noiseConvParams = noiseConvParams
-
+        
         # Save config to JSON
         save_to_json(self.config, self.config_path)
 
@@ -530,15 +523,23 @@ class Experiment:
         model_class = getattr(models, modelName)
         model = model_class(**modelParams)
         model.grid_points = self.prep.tau
-        model = getattr(models.scaling, self.config.scalingName)(
-            lrm=model, **self.config.scalingParams
-        )
+        # Scaling of the model
+        model = getattr(models.scaling, self.config.scalingName)(lrm=model)
         self.model = model
 
     def _init_method(self):
         methodName = self.config.methodName
+        if methodName == "":
+            raise ValueError("Method Name is not set.")
         print("Method Name: ", methodName)
         methodParams = self.config.methodParams
+
+        # Add Evaluation Matrix : it is not stored in the config!
+        if "E" in methodParams:
+            methodParams["E"] = self.model(
+                self.prep.modifiedOmega, matrix=True
+            )
+
         method_func = getattr(methods, methodName)
         method_func_params = extract_params(method_func).keys()
         methodParams = {
