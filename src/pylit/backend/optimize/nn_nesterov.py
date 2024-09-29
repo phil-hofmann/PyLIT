@@ -12,8 +12,8 @@ def nn_nesterov(
     method: callable,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
-    protocol: bool = False,
     svd: bool = False,
+    protocol: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the Nesterov's accelerated gradient method.
 

@@ -8,7 +8,7 @@ def main():
     st.set_page_config(
         page_title="Welcome!",
         page_icon="🚀",
-        layout="wide" if st.session_state["wide_mode"] else "centered",
+        layout="wide" if st.session_state["wide_mode_as"] else "centered",
     )
 
     st.title("Welcome to Pylit 🚀!")

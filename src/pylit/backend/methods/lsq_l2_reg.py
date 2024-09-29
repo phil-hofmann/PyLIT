@@ -14,15 +14,10 @@ from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_s
 
 
 def get(lambd: FLOAT_DTYPE = 1.0) -> Method:
-
-    # Type check
-    if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
-        raise TypeError("lambd must be a float.")
-
     # Type Conversion
     lambd = FLOAT_DTYPE(lambd)
 
-    # Get method
+    # Get Method
     method = _standard(lambd)
 
     # Compile

@@ -13,15 +13,8 @@ from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_s
 
 
 def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
-    # Type check
-    if not isinstance(E, ARRAY):
-        raise TypeError("E must be an array.")
-
-    if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
-        raise TypeError("lambd must be a float.")
-
     # Type Conversion
-    E = E.astype(FLOAT_DTYPE)
+    E = np.asarray(E).astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
 
     # Compute Total Variation operator
@@ -50,7 +43,7 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
 def _standard(TV, lambd) -> Method:
     """Least Squares with Total Variation Regularization."""
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -58,7 +51,7 @@ def _standard(TV, lambd) -> Method:
 
         return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean((TV @ x) ** 2)
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -66,7 +59,7 @@ def _standard(TV, lambd) -> Method:
         n = R.shape[0]
         return (R.T @ (R @ x - F) + lambd * TV.T @ (TV @ x)) / n
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def solution(R, F, P):
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
@@ -81,7 +74,7 @@ def _standard(TV, lambd) -> Method:
 
         return np.linalg.solve(A, b)
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
         n = R.shape[0]

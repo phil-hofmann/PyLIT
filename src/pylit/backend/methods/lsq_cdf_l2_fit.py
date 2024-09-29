@@ -11,7 +11,7 @@ from pylit.global_settings import (
 )
 
 
-def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
+def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     """
     Implements the wasserstein fitness. With the objectiv function
 
@@ -48,45 +48,29 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
 
     Parameters
     ----------
-    S : ARRAY
+    D : ARRAY
         Default Model.
     E : ARRAY
         Evaluation Matrix.
     lambd : FLOAT_DTYPE, optional
         Parameter. The default is 1.0.
 
-    Raises
-    ------
-    TypeError
-        If input is incorrect.
-
     Returns
     -------
     Method
-        Implemented formulation for wasserstein fitness.
+        Implemented formulation for Wasserstein fitness.
 
     """
-    # Type check
-    if not isinstance(S, ARRAY):
-        raise TypeError("S must be an array.")
-
-    if not isinstance(E, ARRAY):
-        raise TypeError("E must be an array.")
-
-    if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
-        raise TypeError("lambd must be a float.")
-
     # Type Conversion
-    E = E.astype(FLOAT_DTYPE)
+    D = np.asarray(D).astype(FLOAT_DTYPE)
+    E = np.asarray(E).astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
 
-    # Compute Total Variation operator
-    n = E.shape[1]
-
-    # Get method
-    method = _standard(S, E, lambd)
+    # Get Method
+    method = _standard(D, E, lambd)
 
     # Compile
+    n = E.shape[1]
     alpha_, R_, F_, P_ = (
         np.zeros((n), dtype=FLOAT_DTYPE),
         np.eye(n, dtype=FLOAT_DTYPE),
@@ -102,10 +86,10 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     return method
 
 
-def _standard(S, E, lambd) -> Method:
+def _standard(D, E, lambd) -> Method:
     """Implements the wasserstein fitness"""
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -113,12 +97,12 @@ def _standard(S, E, lambd) -> Method:
 
         p = E @ x
         n_vec = np.arange(1, len(p) + 1)
-        
+
         return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(
-            np.cumsum((p - S) ** 2) / n_vec
+            np.cumsum((p - D) ** 2) / n_vec
         )
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
@@ -132,22 +116,22 @@ def _standard(S, E, lambd) -> Method:
         grad_L1 = (R.T @ residual) / len(F)
 
         # Gradient of the second term
-        cumsum_diff = np.cumsum(p - S)
+        cumsum_diff = np.cumsum(p - D)
         grad_L2 = lambd * (E.T @ (cumsum_diff / n_vec)) / len(F)
 
         # Total gradient
         grad = grad_L1 + grad_L2
         return grad
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def solution(R, F, P):
         # Solution is not available
         return None
 
-    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
+    @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        n = R.shape[0] # TODO put n below?? TEST !
+        n = R.shape[0]  # TODO put n below?? TEST !
         return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E) ** 2)
 
     return Method("lsq_cdf_l2_fit", f, grad_f, solution, lr)

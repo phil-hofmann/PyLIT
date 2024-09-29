@@ -12,28 +12,17 @@ from pylit.global_settings import (
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
-    # Type check
-    if not isinstance(S, ARRAY):
-        raise TypeError("S must be an array.")
-
-    if not isinstance(E, ARRAY):
-        raise TypeError("E must be an array.")
-
-    if not isinstance(lambd, FLOAT_DTYPE) and not isinstance(lambd, float):
-        raise TypeError("lambd must be a float.")
-
+def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     # Type Conversion
-    E = E.astype(FLOAT_DTYPE)
+    D = np.asarray(D).astype(FLOAT_DTYPE)
+    E = np.asarray(E).astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
 
-    # Compute Total Variation operator
-    n = E.shape[1]
-
-    # Get method
-    method = _standard(S, E, lambd)
+    # Get Method
+    method = _standard(D, E, lambd)
 
     # Compile
+    n = E.shape[1]
     x_, R_, F_, P_ = (
         np.zeros((n), dtype=FLOAT_DTYPE),
         np.eye(n, dtype=FLOAT_DTYPE),
@@ -49,7 +38,7 @@ def get(S: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     return method
 
 
-def _standard(S, E, lambd) -> Method:
+def _standard(D, E, lambd) -> Method:
     """Least Squares with L1 Fitness."""
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
@@ -58,7 +47,7 @@ def _standard(S, E, lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean((E @ x - S) ** 2)
+        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean((E @ x - D) ** 2)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
@@ -66,7 +55,7 @@ def _standard(S, E, lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
         n = R.shape[0]
-        return (R.T @ (R @ x - F) + lambd * E.T @ (E @ x - S)) / n
+        return (R.T @ (R @ x - F) + lambd * E.T @ (E @ x - D)) / n
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def solution(R, F, P):
