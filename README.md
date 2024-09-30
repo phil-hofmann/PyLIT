@@ -99,12 +99,13 @@ Follow these steps to get started with your workspace and run your experiments.
 
 7. **Run the experiment script**
 
-   - Execute your experiment by running the script
-     ```bash
-     python <exp_name>/run.py
-     ```
+   Execute your experiment by running the script
+
+   ```bash
+   poetry run python <exp_name>/run.py
+   ```
 
 8. **View Results**
-   - Wait for the experiment to complete and view your results. Voilà!
+   Wait for the experiment to complete and view your results. Voilà!
 
 Happy experimenting! 🎉
