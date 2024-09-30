@@ -377,7 +377,7 @@ exp.plot_results({{
 
         # Add Evaluation Matrix : it is not stored in the config!
         if "E" in methodParams:
-            methodParams["E"] = self.model(self.prep.modifiedOmega, matrix=True)
+            methodParams["E"] = self.model(self.prep.omega, matrix=True)
         # Add Model Matrix
         if "D" in self.config.methodParams:
             # Automatically scale by trapezodial rule

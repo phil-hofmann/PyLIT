@@ -190,7 +190,7 @@ def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
                 default=True,
             ),
             Param(
-                name="S",
+                name="D",
                 ignore=True,
                 # my_type=ARRAY,
                 my_type=bool,

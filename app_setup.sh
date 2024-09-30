@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Total steps
-total_steps=6
+total_steps=7
 
 # Step 1: Create a virtual environment
 echo "🎉 Step 1/$total_steps: Creating a virtual environment..."
@@ -40,10 +40,13 @@ echo "🎉 Step 5/$total_steps: Installing project dependencies with Poetry..."
 poetry install
 echo "✅ Project dependencies installed."
 
-# TODO Generate the documentation
+# Step 6: Generate documentation using pdoc
+echo "🎉 Step 6/$total_steps: Generating documentation..."
+poetry run pdoc pylit.backend.models pylit.backend.methods pylit.backend.optimize -o docs --math
+echo "✅ Documentation generated."
 
-# Step 6: Deactivate the virtual environment
-echo "🎉 Step 6/$total_steps: Deactivating the virtual environment..."
+# Step 7: Deactivate the virtual environment
+echo "🎉 Step 7/$total_steps: Deactivating the virtual environment..."
 deactivate
 echo "✅ Virtual environment deactivated."
 

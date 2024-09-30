@@ -261,8 +261,10 @@ def main():
                         noiseParams = {} if noiseParams is None else noiseParams
                         HR()
 
-                        state.exp.config.noiseParams = NameParams(
-                            _selected_ref=state.exp.config.noiseName,
+                        (
+                            state.exp.config.noiseName,
+                            state.exp.config.noiseParams,
+                        ) = NameParams(
                             my_id=f"noise_iid",
                             options=NOISES_IID,
                             ref=noise_iid,
@@ -292,8 +294,10 @@ def main():
                             )
                             HR()
 
-                            state.exp.config.noiseConvParams = NameParams(
-                                _selected_ref=state.exp.config.noiseConvName,
+                            (
+                                state.exp.config.noiseConvName,
+                                state.exp.config.noiseConvParams,
+                            ) = NameParams(
                                 my_id=f"noise_conv",
                                 options=NOISES_CONV,
                                 ref=noise_conv,
@@ -435,8 +439,10 @@ def main():
                 modelName = "" if modelName is None else modelName
                 modelParams = state.exp.config.modelParams
                 modelParams = {} if modelParams is None else modelParams
-                state.exp.config.modelParams = NameParams(
-                    _selected_ref=state.exp.config.modelName,
+                (
+                    state.exp.config.modelName,
+                    state.exp.config.modelParams,
+                ) = NameParams(
                     my_id=f"model",
                     options=MODELS,
                     ref=models,
@@ -456,8 +462,10 @@ def main():
                 methodName = "" if methodName is None else methodName
                 methodParams = state.exp.config.methodParams
                 methodParams = {} if methodParams is None else methodParams
-                state.exp.config.methodParams = NameParams(
-                    _selected_ref=state.exp.config.methodName,
+                (
+                    state.exp.config.methodName,
+                    state.exp.config.methodParams,
+                ) = NameParams(
                     my_id=f"method",
                     options=METHODS,
                     ref=methods,
@@ -478,8 +486,10 @@ def main():
                 optimName = "" if optimName is None else optimName
                 optimParams = state.exp.config.optimParams
                 optimParams = {} if optimParams is None else optimParams
-                state.exp.config.optimParams = NameParams(
-                    _selected_ref=state.exp.config.optimName,
+                (
+                    state.exp.config.optimName,
+                    state.exp.config.optimParams,
+                ) = NameParams(
                     my_id=f"optim",
                     options=OPTIMIZER,
                     ref=optimize,

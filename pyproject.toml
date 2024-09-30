@@ -15,13 +15,12 @@ pip = "^24.2"
 numpy = "2.0.2"
 numba = "^0.60.0"
 matplotlib = "^3.9.2"
-sphinx = "^8.0.2"
 scipy = "^1.14.1"
-ipykernel = "^6.29.5"
 streamlit = "^1.38.0"
 pandas = "^2.2.3"
 plotly = "^5.24.1"
 pandoc = "^2.4"
+pdoc = "^14.7.0"
 
 
 [build-system]

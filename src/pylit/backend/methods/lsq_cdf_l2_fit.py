@@ -11,56 +11,52 @@ from pylit.global_settings import (
 )
 
 
-def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
-    """
-    Implements the wasserstein fitness. With the objectiv function
+def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
+    r"""
+    # Least Squares Cumulative Distribution Function L2 Fit
 
-    .. math::
-        f_{\psi}(u,w,\lambda) = \\frac{1}{2} \| \widehat u- \widehat w\|^2_{L^2(\mathbb{R})}
-        + \\frac{\\lambda}{2} \cdot \| \mathrm{CDF}[u - w] \|_{L^2(\mathbb{R})}^2.
+    Implements the Wasserstein fitness with the objective function
+
+    \\[
+        f(u,w,\lambda) = 
+        \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} + 
+        \frac{1}{2} \lambda \| \mathrm{CDF}[u - w] \|_{L^2(\mathbb{R})}^2
+    \\]
 
     which is here implemented as
 
-    .. math::
-        f(\\boldsymbol{\\alpha}) = \\frac{1}{2} \| \\boldsymbol{R} \\boldsymbol{\\alpha} - \\boldsymbol{F} \|^2_2
-        + \lambda \cdot \\left( \sum_{\omega_k \in \Omega} \\frac{1}{2}
-                               \\left(
-                                   \sum_{i \in I} (\\boldsymbol{E} \\boldsymbol{\\alpha})_i  - \\boldsymbol{D}_i
-                                   \\right)^2
-                               \\right),
+    \\[
+        f(\boldsymbol{\alpha}) = 
+        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 + 
+        \frac{1}{2} \lambda \left( \frac{1}{n} \sum_{j=1}^n \frac{1}{j} \sum_{i=1}^j(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})_i^2 \right)
+    \\]
 
     with the gradient
 
-    .. math::
-        \\nabla f(\\boldsymbol{\\alpha}) = \\boldsymbol{G}^\\top(\\boldsymbol{G} \\boldsymbol{\\alpha} - \\boldsymbol{F})
-        + \lambda \cdot \\left( \sum_{\omega_k \in \Omega} \\frac{1}{2}
-                               \\left(
-                                   \sum_{i \in I} (\\boldsymbol{E} \\boldsymbol{\\alpha})_i  - \\boldsymbol{D}_i
-                                   \\right) \\boldsymbol{E}^\\top \\boldsymbol{1}
-                               \\right),
-
+    \\[
+        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) = 
+        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \frac{1}{n} \boldsymbol{E}^\top \left( \frac{1}{j} \sum_{i=1}^j(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})_i \right)_j
+    \\]
+    
     where
 
-    * :math:`\\boldsymbol{R}`: regression matrix
-    * :math:`\\boldsymbol{E}`: evaluation matrix
-    * :math:`\\boldsymbol{D}`: default model
-    * :math:`\\boldsymbol{\\alpha}`: desired coefficients
+    - **$\boldsymbol{R}$**: Regression matrix
+    - **$\boldsymbol{E}$**: Evaluation matrix
+    - **$\boldsymbol{D}$**: Default model
+    - **$\boldsymbol{\alpha}$**: Desired coefficients
+    - **$\lambda$**: Regularization parameter
+    - **$n$**: Number of samples
 
-    Parameters
-    ----------
-    D : ARRAY
-        Default Model.
-    E : ARRAY
-        Evaluation Matrix.
-    lambd : FLOAT_DTYPE, optional
-        Parameter. The default is 1.0.
+    ### Parameters
+    - **D** (np.ndarray): Default Model.
+    - **E** (np.ndarray): Evaluation Matrix.
+    - **lambd** (np.float64, optional): Regularization Parameter.
 
-    Returns
-    -------
-    Method
-        Implemented formulation for Wasserstein fitness.
-
+    ### Returns
+    - **Method**: Implemented formulation for Wasserstein fitness.
     """
+
     # Type Conversion
     D = np.asarray(D).astype(FLOAT_DTYPE)
     E = np.asarray(E).astype(FLOAT_DTYPE)
@@ -87,41 +83,36 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
 
 
 def _standard(D, E, lambd) -> Method:
-    """Implements the wasserstein fitness"""
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
+        x = np.asarray(x).astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
+        n = len(F)
 
-        p = E @ x
-        n_vec = np.arange(1, len(p) + 1)
-
-        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(
-            np.cumsum((p - D) ** 2) / n_vec
-        )
+        return FLOAT_DTYPE(0.5 * np.mean((R @ x - F) ** 2) + 0.5 * lambd * np.mean(
+            np.cumsum((E @ x - D) ** 2) / n
+        ))
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
-
-        p = E @ x
-        n_vec = np.arange(1, len(p) + 1)
+        x = np.asarray(x).astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
+        n, _ = R.shape
+        k = len(D)
 
         # Gradient of the first term
-        residual = R @ x - F
-        grad_L1 = (R.T @ residual) / len(F)
+        grad_1 = R.T @ (R @ x - F) / n
 
         # Gradient of the second term
-        cumsum_diff = np.cumsum(p - D)
-        grad_L2 = lambd * (E.T @ (cumsum_diff / n_vec)) / len(F)
+        grad_2 = lambd * E.T @ ((np.arange(k, 0, -1) / n**2) * (E @ x - D))
 
         # Total gradient
-        grad = grad_L1 + grad_L2
-        return grad
+        grad = grad_1 + grad_2
+
+        return np.asarray(grad).astype(FLOAT_DTYPE)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def solution(R, F, P):
@@ -130,8 +121,9 @@ def _standard(D, E, lambd) -> Method:
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
-        R = R.astype(FLOAT_DTYPE)
-        n = R.shape[0]  # TODO put n below?? TEST !
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E) ** 2)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        n, _ = R.shape
+        k = len(D)
+        return FLOAT_DTYPE(n / np.linalg.norm(R.T @ R + lambd * E.T @ np.diag(np.arange(k, 0, -1) / n) @ E))
 
     return Method("lsq_cdf_l2_fit", f, grad_f, solution, lr)

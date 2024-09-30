@@ -77,31 +77,34 @@ Follow these steps to get started with your workspace and run your experiments.
 
 5. **Finalize Experiment Setup**
 
-   - Once you've finished setting up your experiment, save your experiment
-   - Afterwards, go back to your terminal
+   - Once you've completed setting up your experiment, save it and you're ready to run!
+   - Running the experiment via terminal is optional.
 
-Update:
+### Running via Terminal
+
+6. **Activate the virtual environment**
+   Open a new terminal tab and activate the virtual environment
+
+```bash
+   source venv/bin/activate
+```
 
 6. **Navigate to your workspace**
 
-   Open a new tab and navigate to your workspace directory and activate the 'venv' again
+   Navigate to your workspace directory
 
    ```bash
-   source venv/bin/activate
+   cd pylit-workspace
    ```
 
-7. **Reactivate the virtual environment**
+7. **Run the experiment script**
 
-   - Ensure the virtual environment is active ..
-
-8. **Run the experiment script**
-
-   - Execute your experiment script by running:
+   - Execute your experiment by running the script
      ```bash
      python <exp_name>/run.py
      ```
 
-9. **View Results**
+8. **View Results**
    - Wait for the experiment to complete and view your results. Voilà!
 
 Happy experimenting! 🎉
