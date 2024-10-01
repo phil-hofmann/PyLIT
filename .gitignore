@@ -174,5 +174,6 @@ Worker.ipynb
 # Ignore app settings file
 app_settings.json
 
-# Ignore workspace
-workspace/
+# Ignore Mac OS files
+.DS_Store
+
