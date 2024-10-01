@@ -12,7 +12,64 @@ from pylit.global_settings import (
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
+def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
+    r"""
+    # Least Squares with L2 Fitness
+
+    Implements the Least Squares with L2 Fitness with the objective function
+
+    \\[
+        f(u, w, \lambda) = 
+        \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
+        \frac{1}{2} \lambda \| u - w \|_{L^2(\mathbb{R})}^2
+    \\]
+
+    which is here implemented as
+    
+    \\[
+        f(\boldsymbol{\alpha}) = 
+        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D} \|^2_2
+    \\]
+
+    with the gradient
+
+    \\[
+        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) = 
+        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \frac{1}{n} \boldsymbol{E}^\top(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})
+    \\]
+
+    with the learning rate
+
+    \\[
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{E} \|}
+    \\]
+
+    and the solution
+
+    \\[
+        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{E})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} + \lambda \boldsymbol{E}^\top \boldsymbol{D})
+    \\]
+    
+    where
+
+    - **$\boldsymbol{R}$**: Regression matrix
+    - **$\boldsymbol{F}$**: Target vector
+    - **$\boldsymbol{E}$**: Evaluation matrix
+    - **$\boldsymbol{D}$**: Default model vector
+    - **$\boldsymbol{\alpha}$**: Coefficient vector
+    - **$\lambda$**: Regularization parameter
+    - **$n$**: Number of samples
+    
+    ### Arguments
+    - **D** (np.ndarray): Default model vector.
+    - **E** (np.ndarray): Evaluation matrix.
+    - **lambd** (np.float64): Regularization parameter.
+
+    ### Returns
+    - **Method**(Method): Implemented formulation for Least Squares with L2 Fitness.
+    """
     # Type Conversion
     D = np.asarray(D).astype(FLOAT_DTYPE)
     E = np.asarray(E).astype(FLOAT_DTYPE)
@@ -22,11 +79,11 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     method = _standard(D, E, lambd)
 
     # Compile
-    n = E.shape[1]
+    k = len(D)
     x_, R_, F_, P_ = (
-        np.zeros((n), dtype=FLOAT_DTYPE),
-        np.eye(n, dtype=FLOAT_DTYPE),
-        np.zeros((n), dtype=FLOAT_DTYPE),
+        np.zeros((k), dtype=FLOAT_DTYPE),
+        np.eye(k, dtype=FLOAT_DTYPE),
+        np.zeros((k), dtype=FLOAT_DTYPE),
         np.array([0], dtype=INT_DTYPE),
     )
 
@@ -39,7 +96,6 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
 
 
 def _standard(D, E, lambd) -> Method:
-    """Least Squares with L1 Fitness."""
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH) # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
@@ -68,7 +124,7 @@ def _standard(D, E, lambd) -> Method:
         A = R.T @ R + lambd * E.T @ E
         A = jit_sub_mat_by_index_set(A, P)
 
-        b = R.T @ F
+        b = R.T @ F + lambd * E.T @ D
         b = jit_sub_vec_by_index_set(b, P)
 
         return np.linalg.solve(A, b)

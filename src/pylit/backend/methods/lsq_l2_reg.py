@@ -13,7 +13,62 @@ from pylit.global_settings import (
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
 
-def get(lambd: FLOAT_DTYPE = 1.0) -> Method:
+def get(lambd: FLOAT_DTYPE) -> Method:
+    r"""
+    # Least Squares with L2 Regularization
+
+    Implements the Least Squares with L2 Regularization with the objective function
+
+    \\[
+        f(u, w, \lambda) =
+        \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
+        \frac{1}{2} \lambda \| u \|_{L^2(\mathbb{R})}^2
+    \\]
+
+    which is here implemented as
+
+    \\[
+        f(\boldsymbol{\alpha}) =
+        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|^2_2
+    \\]
+
+    with the gradient
+
+    \\[
+        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
+        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \frac{1}{n} \boldsymbol{\alpha}
+    \\]
+
+    with the learning rate
+
+    \\[
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I} \|}
+    \\]
+
+    and the solution
+
+    \\[
+        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I})^{-1} \boldsymbol{R}^\top \boldsymbol{F}
+    \\]
+
+    where
+
+    - **$\boldsymbol{R}$**: Regression matrix
+    - **$\boldsymbol{F}$**: Target vector
+    - **$\boldsymbol{I}$**: Identity matrix
+    - **$\boldsymbol{\alpha}$**: Coefficient vector
+    - **$\lambda$**: Regularization parameter
+    - **$n$**: Number of samples
+
+    # Arguments
+    - **lambd**(np.float64): Regularization parameter.
+
+    # Returns
+    - **Method**(Method): Least Squares with L2 Regularization.
+    """
+
     # Type Conversion
     lambd = FLOAT_DTYPE(lambd)
 
@@ -37,7 +92,6 @@ def get(lambd: FLOAT_DTYPE = 1.0) -> Method:
 
 
 def _standard(lambd) -> Method:
-    """Least Squares with L1 Regularization."""
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def f(x, R, F) -> FLOAT_DTYPE:
@@ -45,24 +99,26 @@ def _standard(lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(x**2)
+        return FLOAT_DTYPE(
+            0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(x**2)
+        )
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def grad_f(x, R, F) -> ARRAY:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
+        x = np.asarray(x).astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
         n = R.shape[0]
-        return (R.T @ (R @ x - F) + lambd * x) / n
+        return np.asarray((R.T @ (R @ x - F) + lambd * x) / n).astype(FLOAT_DTYPE)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
-    def solution(R, F, P):
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
-        P = P.astype(INT_DTYPE)
+    def solution(R, F, P) -> ARRAY:
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
+        P = np.asarray(P).astype(INT_DTYPE)
 
         # np.ix_ unsupported in numba
-        m = R.shape[1]
+        _, m = R.shape[1]
 
         A = R.T @ R + lambd * np.eye(m)
         A = jit_sub_mat_by_index_set(A, P)
@@ -70,12 +126,14 @@ def _standard(lambd) -> Method:
         b = R.T @ F
         b = jit_sub_vec_by_index_set(b, P)
 
-        return np.linalg.solve(A, b)
+        return np.asarray(np.linalg.solve(A, b)).astype(FLOAT_DTYPE)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
-        R = R.astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
         n, m = R.shape
-        return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
+        return FLOAT_DTYPE(
+            n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
+        )
 
     return Method("lsq_l2_reg", f, grad_f, solution, lr)

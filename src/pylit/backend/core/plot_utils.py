@@ -301,7 +301,6 @@ def _plotly_forward_default_model_error(exp: Experiment) -> go.Figure:
 # --- Model Plotting --- #
 
 
-# TODO run.py not properly implemented this function
 def plot_results(
     exp: Experiment,
     coefficients: bool,

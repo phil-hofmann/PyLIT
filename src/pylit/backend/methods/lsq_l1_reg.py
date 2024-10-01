@@ -22,58 +22,50 @@ def get(lambd: FLOAT_DTYPE) -> Method:
     \\[
         f(u, w, \lambda) = 
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
-        \lambda \cdot \| u \|_{L^1(\mathbb{R})}
+        \lambda \| u \|_{L^1(\mathbb{R})}
     \\]
 
     which is here implemented as
 
     \\[
         f(\boldsymbol{\alpha}) = 
-        \frac{1}{2\cdot n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \frac{\lambda}{n} \cdot \| \boldsymbol{\alpha} \|_1
+        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|_1
     \\]
 
     with the gradient
 
     \\[
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) = 
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \frac{\lambda}{n},
+        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) \pm
+        \lambda \frac{1}{n}, \quad \boldsymbol{\alpha} \neq 0
     \\]
 
-    with the solution
+    with the learning rate
 
     \\[
-        \boldsymbol{\alpha} = (\boldsymbol{R}^\top \boldsymbol{R})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} - \lambda)
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}, \quad \boldsymbol{\alpha} \neq 0
     \\]
 
-    and the learning rate
+    and the solution
 
     \\[
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}
-    \\]
-
-    by means of the estimate
-
-    \\[
-        \|\nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) - \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\beta})\| 
-        = \| n^{-1} \boldsymbol{R}^\top \boldsymbol{R} (\boldsymbol{\alpha} - \boldsymbol{\beta}) \|
-        \leq n^{-1} \|\boldsymbol{R}^\top \boldsymbol{R}\| \|\boldsymbol{\alpha} - \boldsymbol{\beta}\|
+        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} \pm \lambda), \quad \boldsymbol{\alpha} \neq 0
     \\]
 
     where
 
     - **$\boldsymbol{R}$**: Regression matrix
     - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{\alpha}$**: Desired coefficients
+    - **$\boldsymbol{\alpha}$**: Coefficient vector
     - **$\lambda$**: Regularization parameter
     - **$n$**: Number of samples
 
-    ### Parameters
+    ### Arguments
     - **lambd** (np.float64): Regularization Parameter.
 
     ### Returns
-    - **Method**: Implemented formulation for Least Squares with L1 Regularization.
+    - **Method**(Method): Implemented formulation for Least Squares with L1 Regularization.
     """
     # Type Conversion
     lambd = FLOAT_DTYPE(lambd)
