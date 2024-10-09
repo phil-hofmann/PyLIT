@@ -9,7 +9,7 @@ from pylit.backend.models.rlrm import RegularLinearRegressionModel
 class LaplaceRLRM(RegularLinearRegressionModel):
     """This is the regular linear regression model with Laplace model functions.
 
-    TODO"""
+    TODO rename b into bs to be consistent with the other models."""
 
     def __init__(
         self, omegas: ARRAY, b: ARRAY, beta: FLOAT_DTYPE = 1.0, order: str = "0,1"

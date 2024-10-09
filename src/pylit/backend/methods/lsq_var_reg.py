@@ -1,6 +1,8 @@
+import warnings
 import numpy as np
 
 from numba import njit
+from numba.core.errors import NumbaPerformanceWarning
 from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
@@ -10,8 +12,11 @@ from pylit.global_settings import (
     FASTMATH,
 )
 
+# Filter out NumbaPerformanceWarning
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
-def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
+
+def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
     # Type Conversion
     omegas = np.asarray(omegas).astype(FLOAT_DTYPE)
     E = np.asarray(E).astype(FLOAT_DTYPE)
@@ -21,11 +26,11 @@ def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
     method = _standard(omegas, E, lambd)
 
     # Compile
-    n = E.shape[1]
+    _, m = E.shape
     x_, R_, F_, P_ = (
-        np.zeros((n), dtype=FLOAT_DTYPE),
-        np.eye(n, dtype=FLOAT_DTYPE),
-        np.zeros((n), dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
+        np.eye(m, dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
         np.array([0], dtype=INT_DTYPE),
     )
 
@@ -40,54 +45,55 @@ def get(omegas: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE = 1.0) -> Method:
 def _standard(omegas, E, lambd) -> Method:
     """Least Squares with Cross Entropy Fitness."""
 
-    n = E.shape[1]
-    norm = np.linalg.norm(E) ** 2
-
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
+        x = np.asarray(x).astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
+        _, m = R.shape
+        E_ = E[:, :m]
 
-        m = E @ x  # Evaluate
-        E_omegas = np.mean(omegas * m)  # compute expected value with Riemann sum
-        V_omegas = np.mean(
-            (E_omegas - omegas) ** 2
-        )  # compute variance with Riemann sum
+        p = E_ @ x
+        E_p = np.mean(p * omegas)
+        V_p = np.mean((E_p - omegas) ** 2)
 
-        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * V_omegas
+        return FLOAT_DTYPE(0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * V_p)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def grad_f(x, R, F) -> ARRAY:
-        x = x.astype(FLOAT_DTYPE)
-        R = R.astype(FLOAT_DTYPE)
-        F = F.astype(FLOAT_DTYPE)
+        x = np.asarray(x).astype(FLOAT_DTYPE)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        F = np.asarray(F).astype(FLOAT_DTYPE)
+        n, m = R.shape
+        E_ = E[:, :m]
 
-        m = E @ x  # Evaluate
-        E_omegas = np.mean(omegas * m)  # compute expected value with Riemann sum
+        p = E_ @ x
+        E_p = np.mean(p * omegas)
+        omegas_mean = np.mean(omegas)
 
-        # Gradient of the first term
-        residual = R @ x - F
-        grad_L1 = (R.T @ residual) / len(F)
-
-        # Gradient of the second term
-        grad_V_omegas = lambd * (E_omegas - omegas) / len(omegas)
-        grad_E_omegas = np.mean(omegas * grad_V_omegas)
-        grad_m = grad_E_omegas * omegas / len(omegas)
-        grad_L2 = E.T @ grad_m
-
-        # Total gradient
-        grad = grad_L1 + grad_L2
-        return grad
+        return np.asarray(
+            R.T @ (R @ x - F) / n + lambd * (E_p - omegas_mean) * E_.T @ omegas
+        ).astype(FLOAT_DTYPE)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
-    def solution(R, F, P):
-        # Solution is not available
+    def solution(R, F, P) -> ARRAY:
+        # TODO Solution is not available >yet<.
         return None
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
-        R = R.astype(FLOAT_DTYPE)
-        return 1 / (np.linalg.norm(R.T @ R) + lambd * norm)
+        R = np.asarray(R).astype(FLOAT_DTYPE)
+        n, m = R.shape
+        k = len(omegas)
+        E_ = E[:, :m]
+
+        norm = (
+            np.linalg.norm(E_.T @ omegas)
+            * np.linalg.norm(E_)
+            * np.linalg.norm(omegas)
+            / k**2
+        )
+
+        return FLOAT_DTYPE(n / (np.linalg.norm(R.T @ R) + lambd * n * norm))
 
     return Method("lsq_var_reg_fit", f, grad_f, solution, lr)

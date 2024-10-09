@@ -11,10 +11,8 @@ def main():
         layout="wide" if st.session_state["wide_mode_as"] else "centered",
     )
 
-    st.title("Welcome to Pylit 🚀!")
-
     # Read the contents of the README.md file
-    readme_path = "README.md"
+    readme_path = "../../../README.md"
     with open(readme_path, "r") as file:
         readme_content = file.read()
 

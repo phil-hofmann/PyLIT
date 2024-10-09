@@ -37,6 +37,14 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
                 num_value=int(1 / exp.prep.stdD),
             ),
             Param(
+                name="b",
+                label="b",
+                my_type=ARRAY,
+                lower_value=np.round(exp.prep.stdD, 2),
+                upper_value=np.round(10 * exp.prep.stdD, 2),
+                num_value=int(1 / exp.prep.stdD),
+            ),
+            Param(
                 name="beta",
                 label="Beta",
                 default=1.0,
@@ -64,10 +72,10 @@ OPTIMIZER = Options(
             ref="nn_adam",
             name="Non Negative ADAM",
         ),
-        # Option(
-        #     ref="nn_bro",
-        #     name="Non Negative Bro",
-        # ),
+        Option(
+            ref="nn_bro",
+            name="Non Negative Bro",
+        ),
     ]
 )
 
@@ -168,8 +176,12 @@ METHODS = Options(
 
 
 def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
-    lambd_default = 1.0 if not exp.imported else exp.prep.forwardDMaxError
-    upper_value = 1.0 if not exp.imported else exp.prep.forwardDMaxError
+    lambd_default = (
+        1.0 if not exp.imported else FLOAT_DTYPE(f"{exp.prep.forwardDMaxError:.1e}")
+    )
+    upper_value = (
+        1.0 if not exp.imported else FLOAT_DTYPE(f"{exp.prep.forwardDMaxError:.1e}")
+    )
     return ParamMap(
         [
             Param(

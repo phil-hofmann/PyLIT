@@ -1,6 +1,8 @@
+import warnings
 import numpy as np
 
 from numba import njit
+from numba.core.errors import NumbaPerformanceWarning
 from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
@@ -11,6 +13,9 @@ from pylit.global_settings import (
     FASTMATH,
 )
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
+
+# Filter out NumbaPerformanceWarning
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 
 def get(lambd: FLOAT_DTYPE) -> Method:
@@ -108,17 +113,26 @@ def _standard(lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n = R.shape[0]
-        return np.asarray((R.T @ (R @ x - F) + lambd * x) / n).astype(FLOAT_DTYPE)
+        n, _ = R.shape
+
+        # Gradient of the first term
+        grad_1 = R.T @ (R @ x - F) / n
+
+        # Gradient of the second term
+        grad_2 = lambd * x / n
+
+        # Total gradient
+        grad = grad_1 + grad_2
+        return np.asarray(grad).astype(FLOAT_DTYPE)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def solution(R, F, P) -> ARRAY:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
+        _, m = R.shape
 
         # np.ix_ unsupported in numba
-        _, m = R.shape[1]
 
         A = R.T @ R + lambd * np.eye(m)
         A = jit_sub_mat_by_index_set(A, P)
@@ -132,6 +146,7 @@ def _standard(lambd) -> Method:
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         n, m = R.shape
+
         return FLOAT_DTYPE(
             n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
         )

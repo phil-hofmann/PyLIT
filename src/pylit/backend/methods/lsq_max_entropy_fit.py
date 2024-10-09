@@ -1,6 +1,8 @@
+import warnings
 import numpy as np
 
 from numba import njit
+from numba.core.errors import NumbaPerformanceWarning
 from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
@@ -11,6 +13,9 @@ from pylit.global_settings import (
     PARALLEL,
     FASTMATH,
 )
+
+# Filter out NumbaPerformanceWarning
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 
 def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
@@ -81,11 +86,11 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
     method = _standard(D, E, lambd)
 
     # Compile
-    k = len(D)
+    _, m = E.shape
     x_, R_, F_, P_ = (
-        np.zeros((k), dtype=FLOAT_DTYPE),
-        np.eye(k, dtype=FLOAT_DTYPE),
-        np.zeros((k), dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
+        np.eye(m, dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
         np.array([0], dtype=INT_DTYPE),
     )
 
@@ -99,21 +104,22 @@ def get(D: ARRAY, E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
 
 def _standard(D, E, lambd) -> Method:
 
-    D = np.clip(D, a_min=0, a_max=None)  # Clip Non-negative
+    D = np.clip(D, a_min=0, a_max=None)
     q = np.copy(D)
-    q = np.clip(q, a_min=TOL_LOG, a_max=None)  # Clip Log
-    log_q = np.log(q)  # Take Log
-    norm_E = np.linalg.norm(E)
+    q = np.clip(q, a_min=TOL_LOG, a_max=None)
+    log_q = np.log(q)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
+        _, m = R.shape
+        E_ = E[:, :m]
 
-        p = E @ x  # Evaluate
-        p = np.clip(p, a_min=0, a_max=None)  # Clip Non-negative
-        log_p = np.log(p)  # Take Log
+        p = E_ @ x
+        p = np.clip(p, a_min=0, a_max=None)
+        log_p = np.log(p)
 
         return FLOAT_DTYPE(
             0.5 * np.mean((R @ x - F) ** 2) + lambd * np.mean(p * (log_p - log_q))
@@ -124,35 +130,37 @@ def _standard(D, E, lambd) -> Method:
         x = np.asarray(x).astype(np.float64)
         R = np.asarray(R).astype(np.float64)
         F = np.asarray(F).astype(np.float64)
-        n, _ = R.shape
+        n, m = R.shape
+        E_ = E[:, :m]
 
-        # Compute p and log_p
-        p = E @ x
+        p = E_ @ x
         p = np.clip(p, a_min=0, a_max=None)
         p_hat = np.clip(p, a_min=TOL_LOG, a_max=None)
         log_p = np.log(p_hat)
 
         # Gradient of the first term
-        residual = R @ x - F
-        grad_L1 = (R.T @ residual) / n
+        grad_1 = R.T @ (R @ x - F) / n
 
         # Gradient of the second term
-        grad_L2 = lambd * (E.T @ (log_p - log_q + 1)) / n
+        grad_2 = lambd * (E_.T @ (log_p - log_q + 1)) / n
 
         # Total gradient
-        grad = grad_L1 + grad_L2
+        grad = grad_1 + grad_2
         return np.asarray(grad).astype(FLOAT_DTYPE)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
-    def solution(R, F, P):
+    def solution(R, F, P) -> ARRAY:
         # No closed form solution available
-        raise NotImplementedError("No closed form solution available")
+        return None
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, _ = R.shape
+        n, m = R.shape
+        E_ = E[:, :m]
 
-        return FLOAT_DTYPE(n / (np.linalg.norm(R.T @ R) + lambd * norm_E ** 2))
+        return FLOAT_DTYPE(
+            n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E_) ** 2)
+        )
 
     return Method("lsq_max_entropy_fit", f, grad_f, solution, lr)

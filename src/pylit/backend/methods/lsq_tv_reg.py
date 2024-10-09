@@ -1,6 +1,8 @@
+import warnings
 import numpy as np
 
 from numba import njit
+from numba.core.errors import NumbaPerformanceWarning
 from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
@@ -10,6 +12,9 @@ from pylit.global_settings import (
     FASTMATH,
 )
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
+
+# Filter out NumbaPerformanceWarning
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 
 def get(E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
@@ -73,18 +78,15 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
     E = np.asarray(E).astype(FLOAT_DTYPE)
     lambd = FLOAT_DTYPE(lambd)
 
-    # Compute Total Variation operator
-    n = E.shape[1]
-    V_E = (E[: len(E) - 1] - E[1 : len(E)])
-
     # Get method
-    method = _standard(V_E, lambd)
+    method = _standard(E, lambd)
 
     # Compile
+    _, m = E.shape
     x_, R_, F_, P_ = (
-        np.zeros((n), dtype=FLOAT_DTYPE),
-        np.eye(n, dtype=FLOAT_DTYPE),
-        np.zeros((n), dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
+        np.eye(m, dtype=FLOAT_DTYPE),
+        np.zeros((m), dtype=FLOAT_DTYPE),
         np.array([0], dtype=INT_DTYPE),
     )
 
@@ -96,13 +98,21 @@ def get(E: ARRAY, lambd: FLOAT_DTYPE) -> Method:
     return method
 
 
-def _standard(V_E, lambd) -> Method:
+def _standard(E, lambd) -> Method:
+
+    # Compute Finite Difference Operator
+    n, _ = E.shape
+    FD = np.diag(-np.ones(n), 0) + np.diag(np.ones(n - 1), 1)
+    FD[-1, :] = 0
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def f(x, R, F) -> FLOAT_DTYPE:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
+        _, m = R.shape
+        E_ = E[:, :m]
+        V_E = FD @ E_
 
         return FLOAT_DTYPE(
             0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.sum((V_E @ x) ** 2)
@@ -113,17 +123,28 @@ def _standard(V_E, lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, _ = R.shape
-        return np.asarray(R.T @ (R @ x - F) / n + lambd * V_E.T @ (V_E @ x)).astype(
-            FLOAT_DTYPE
-        )
+        n, m = R.shape
+        E_ = E[:, :m]
+        V_E = FD @ E_
+
+        # Gradient of the first term
+        grad_1 = R.T @ (R @ x - F) / n
+
+        # Gradient of the second term
+        grad_2 = lambd * V_E.T @ (V_E @ x)
+
+        # Total gradient
+        grad = grad_1 + grad_2
+        return np.asarray(grad).astype(FLOAT_DTYPE)
 
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def solution(R, F, P) -> ARRAY:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
-        n, _ = R.shape
+        n, m = R.shape
+        E_ = E[:, :m]
+        V_E = FD @ E_
 
         # np.ix_ unsupported in numba
 
@@ -138,9 +159,11 @@ def _standard(V_E, lambd) -> Method:
     @njit(cache=False, parallel=PARALLEL, fastmath=FASTMATH)  # NOTE cache won't work
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, _ = R.shape
-        return FLOAT_DTYPE(
-            n / (np.linalg.norm(R.T @ R) + lambd * n * np.linalg.norm(V_E.T @ V_E))
-        )
+        n, m = R.shape
+        E_ = E[:, :m]
+        V_E = FD @ E_
+
+        norm = np.linalg.norm(V_E.T @ V_E)
+        return FLOAT_DTYPE(n / (np.linalg.norm(R.T @ R) + lambd * n * norm))
 
     return Method("lsq_tv_reg", f, grad_f, solution, lr)

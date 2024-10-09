@@ -1,8 +1,8 @@
 import numpy as np
 import numba as nb
 
-from pylit.backend.core import Solution
 from pylit.backend.utils import svd_optim
+from pylit.backend.core import Method, Solution
 from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE, TOL
 
 
@@ -10,7 +10,7 @@ def nn_adam(
     R: ARRAY,
     F: ARRAY,
     x0: ARRAY,
-    method: callable,
+    method: Method,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
     svd: bool = False,

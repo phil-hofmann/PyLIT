@@ -337,8 +337,8 @@ def _matplot_coeffs(exp: Experiment) -> None:
 
     # Add labels and title
     ax.set_title("")
-    ax.set_xlabel("Index")
-    ax.set_ylabel("Coefficient Space")
+    ax.set_xlabel("Coefficient Index")
+    ax.set_ylabel("Model Index")
 
     # Adjust layout
     plt.tight_layout()
@@ -357,8 +357,8 @@ def _plotly_coeffs(exp: Experiment) -> go.Figure:
     # Add labels and title
     fig.update_layout(
         title="",
-        xaxis_title="Index",
-        yaxis_title="Coefficient Space",
+        xaxis_title="Coefficient Index",
+        yaxis_title="Model Index",
     )
 
     # Save the plot as an HTML file

@@ -10,7 +10,7 @@ FLOAT_DTYPE = np.float64
 ARRAY = np.ndarray
 
 # Optimisation
-TOL = np.spacing(1.0)
+TOL = FLOAT_DTYPE(f"{np.spacing(1.0):.1e}")
 MAX_ITER = 100
 TOL_LOG = 1e-3
 

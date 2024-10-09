@@ -1,6 +1,8 @@
+import warnings
 import numpy as np
 
 from numba import njit
+from numba.core.errors import NumbaPerformanceWarning
 from pylit.backend.core import Method
 from pylit.global_settings import (
     ARRAY,
@@ -12,15 +14,18 @@ from pylit.global_settings import (
 )
 from pylit.backend.utils import jit_sub_mat_by_index_set, jit_sub_vec_by_index_set
 
+# Filter out NumbaPerformanceWarning
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
+
 
 def get(lambd: FLOAT_DTYPE) -> Method:
     r"""
     # Least Squares with L1 Regularization
-    
+
     Implements the Least Squares with L1 Regularization with the objective function
 
     \\[
-        f(u, w, \lambda) = 
+        f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
         \lambda \| u \|_{L^1(\mathbb{R})}
     \\]
@@ -28,7 +33,7 @@ def get(lambd: FLOAT_DTYPE) -> Method:
     which is here implemented as
 
     \\[
-        f(\boldsymbol{\alpha}) = 
+        f(\boldsymbol{\alpha}) =
         \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
         \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|_1
     \\]
@@ -36,7 +41,7 @@ def get(lambd: FLOAT_DTYPE) -> Method:
     with the gradient
 
     \\[
-        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) = 
+        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
         \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) \pm
         \lambda \frac{1}{n}, \quad \boldsymbol{\alpha} \neq 0
     \\]
@@ -104,8 +109,17 @@ def _standard(lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n = R.shape[0]
-        return np.asarray((R.T @ (R @ x - F) + lambd) / n).astype(FLOAT_DTYPE)
+        n, _ = R.shape
+
+        # Gradient of the first term
+        grad_1 = R.T @ (R @ x - F) / n
+
+        # Gradient of the second term
+        grad_2 = lambd * np.sign(x) / n
+
+        # Total gradient
+        grad = grad_1 + grad_2
+        return np.asarray(grad).astype(FLOAT_DTYPE)
 
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def solution(R, F, P) -> ARRAY:
@@ -126,7 +140,8 @@ def _standard(lambd) -> Method:
     @njit(cache=CACHE, parallel=PARALLEL, fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n = R.shape[0]
+        n, _ = R.shape
+
         return FLOAT_DTYPE(n / np.linalg.norm(R.T @ R))
 
     return Method("lsq_l1_reg", f, grad_f, solution, lr)

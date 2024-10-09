@@ -1,23 +1,22 @@
-# Python Laplace Inverse Transformation
-
-`Pylit`
+# Welcome to Pylit 🚀!
+**✨Python Laplace Inverse Transformation✨**
 
 This software provides a Python implementation of the inverse Laplace Transformation.
 
-## 📜 License
+### 📜 License
 
 The project is licensed under the [MIT License](LICENSE.txt).
 
-## 💬 Citations
+### 💬 Citations
 
 - Inverse Laplace transform in quantum many-body theory. [Alexander Benedix Robles](a.benedix-robles@hzdr.de), [Phil-Alexander Hofmann](mailto:philhofmann@outlook.com), [Tobias Dornheim](t.dornheim@hzdr.de), [Michael Hecht](m.hecht@hzdr.de)
 
-## 👥 Team and Support
+### 👥 Team and Support
 
 - [Phil-Alexander Hofmann](https://github.com/philippocalippo/)
 - [Alexander Benedix Robles](https://github.com/alexanderbenedix/)
 
-## 🙏 Acknowledgments
+### 🙏 Acknowledgments
 
 We would like to acknowledge:
 
@@ -26,7 +25,7 @@ We would like to acknowledge:
 
 and the support and resources provided by the [Center for Advanced Systems Understanding](https://www.casus.science/) ([Helmholtz-Zentrum Dreden-Rossendorf](https://www.hzdr.de/)) where the development of this project took place.
 
-## 📝 Remarks
+### 📝 Remarks
 
 This project originated from a prototype developed by Alexander Benedix Robles. His initial work laid the foundation for the current implementation.
 
@@ -51,7 +50,7 @@ chmod +x app_setup.sh app_start.sh
 ./setup.sh
 ```
 
-## 🚀 Usage Guide
+### ⚙️ Usage Guide
 
 Follow these steps to get started with your workspace and run your experiments.
 
@@ -80,7 +79,7 @@ Follow these steps to get started with your workspace and run your experiments.
    - Once you've completed setting up your experiment, save it and you're ready to run!
    - Running the experiment via terminal is optional.
 
-### Running via Terminal
+### 🚀 Running via Terminal
 
 6. **Activate the virtual environment**
    Open a new terminal tab and activate the virtual environment
@@ -109,3 +108,6 @@ Follow these steps to get started with your workspace and run your experiments.
    Wait for the experiment to complete and view your results. Voilà!
 
 Happy experimenting! 🎉
+
+### 🏗️ DIY
+How to implement [Methods](#), [Models](#) and [Optimizers](#) by yourself.

@@ -629,9 +629,10 @@ def main():
                 st.info(
                     "To run via terminal, use the following commands.\n\n"
                     "```bash\n"
-                    "conda activate pylit\n"
+                    "source venv/bin/activate\n"
+                    "poetry shell\n"
                     f"python {state.exp.path_run}\n"
-                    "conda deactivate\n"
+                    "deactivate\n"
                     "```"
                 )
 

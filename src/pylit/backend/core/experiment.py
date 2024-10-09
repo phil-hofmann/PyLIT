@@ -361,7 +361,7 @@ plot_results(
     def _init_model(self, print_name: bool, time_scaling: bool):
         modelName = self.config.modelName
         if print_name:
-            print("Model Name: ", modelName)
+            print("\nModel Name: ", modelName)
         modelParams = self.config.modelParams
         model_class = getattr(models, modelName)
         model = model_class(**modelParams)
@@ -427,7 +427,7 @@ plot_results(
 
         for noise in noise_F:
             for i, method in enumerate(self.method):
-                x0 = self.model.coeffs  # Is defaulted to zero!
+                x0 = 0.0 * self.model.coeffs  # Is defaulted to zero!
                 R = self.model.regression_matrix
                 F = self.prep.F + noise
                 # Automatically scale by max F
@@ -548,10 +548,10 @@ plot_results(
         self.output.forwardSMaxError = np.amax(self.output.forwardSAbsError, axis=0)
 
         # Store S, L(S) to CSV
-        S_df = pd.DataFrame(self.output.S)
-        S_df.to_csv(self.path_S, index=False)
-        L_S_df = pd.DataFrame(self.output.forwardS)
-        L_S_df.to_csv(self.path_L_S, index=False)
+        S_df = pd.DataFrame([self.prep.omega, *self.output.S]).T
+        S_df.to_csv(self.path_S, index=False, header=False)
+        L_S_df = pd.DataFrame([self.prep.tau, *self.output.forwardS]).T
+        L_S_df.to_csv(self.path_L_S, index=False, header=False)
 
         # Store output to JSON
         save_to_json(self.output, self.output_path)

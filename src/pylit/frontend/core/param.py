@@ -56,7 +56,7 @@ class Param:
     def my_type(self):
         if self._my_type is not None:
             return self._my_type
-        raise ValueError(f"This parameter has no declared type - it is {self._my_type}!")
+        raise ValueError(f"This parameter '{self.name}' has no declared type.")
 
     @my_type.setter
     def my_type(self, new_my_type: type):
