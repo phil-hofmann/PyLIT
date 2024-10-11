@@ -2,19 +2,21 @@ import pylit
 import numpy as np
 import numba as nb
 
-from pylit.backend.core import Solution
 from pylit.backend.utils import argmax
+from pylit.backend.core import Method, Solution
 from pylit.global_settings import FLOAT_DTYPE, INT_DTYPE, ARRAY, TOL
 
 # TODO FIX IMPLEMENTATION!
+
 
 def nn_bro(
     R: ARRAY,
     F: ARRAY,
     x0: ARRAY,
-    method: callable,
+    method: Method,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
+    svd: bool = False,  # TODO add SVD
     protocol: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the non-negative least square method of Bro."""
@@ -42,7 +44,6 @@ def nn_bro(
         x0,
         maxiter,
         tol,
-        method.pr,
         protocol,
     )
     fx = method.f(x, R, F)
@@ -51,7 +52,7 @@ def nn_bro(
 
 
 @nb.njit
-def _nn_bro(R, F, f, grad_f, solution, x0, maxiter, tol, pr, protocol) -> ARRAY:
+def _nn_bro(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> ARRAY:
 
     # Initialize variables:
     n = R.shape[1]

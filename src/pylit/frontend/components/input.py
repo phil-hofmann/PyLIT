@@ -10,7 +10,12 @@ def Input(
     my_id: str,
     param: Param,
 ):
-    if param.my_type in [INT_DTYPE, int, FLOAT_DTYPE, float] or type(param.my_type) in [INT_DTYPE, int, FLOAT_DTYPE, float]:
+    if param.my_type in [INT_DTYPE, int, FLOAT_DTYPE, float] or type(param.my_type) in [
+        INT_DTYPE,
+        int,
+        FLOAT_DTYPE,
+        float,
+    ]:
         attributes = param.attributes
 
         if "value" in attributes and type(attributes["value"]) in [ARRAY, list]:
@@ -42,18 +47,33 @@ def Input(
         value = param.value
         if type(param.value) is not bool:
             value = False
-        return st.toggle(
-            key=my_id,
-            label=param.label,
-            value=value,
-        )
+        if param.description is None:
+            return st.toggle(
+                key=my_id,
+                label=param.label,
+                value=value,
+            )
+        else:
+            col = st.columns([1, 2], vertical_alignment="center")
+            with col[0]:
+                toggle_component = st.toggle(
+                    key=my_id,
+                    label=param.label,
+                    value=value,
+                )
+            with col[1]:
+                st.markdown(param.description)
+            return toggle_component
+
     elif param.my_type in [list, ARRAY]:
         my_id_seq_type = f"{my_id}_seq_type"
         my_id_lower = f"{my_id}_lower"
         my_id_upper = f"{my_id}_upper"
         my_id_num_points = f"{my_id}_num_points"
         lower_value, upper_value, num_value = param.default  # TODO Handle that
-        with st.expander(label=param.label, expanded=True):
+        with st.expander(
+            label=param.label, expanded=st.session_state["auto_expand_as"]
+        ):
             col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
             with col1:
                 seq_type = st.selectbox(

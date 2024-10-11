@@ -2,9 +2,13 @@ import numpy as np
 from abc import ABC, abstractmethod
 from pylit.global_settings import INT_DTYPE, ARRAY, FLOAT_DTYPE
 
-# NOTE symmetric noise only works for linear tau-spaces !!!
+# NOTE
+# - Only specify the Types, frontend will specify the rest through the PARAM_MAP
+# - Symmetric noise only works for linear tau-spaces
+# - Add more noise types as needed at the end
 
 
+# Utilities
 def symmetric_noise(noise: ARRAY) -> ARRAY:
     n = len(noise)
     n_half = n // 2
@@ -21,25 +25,32 @@ def symmetric_noise(noise: ARRAY) -> ARRAY:
         )
 
 
+# Noise Classes
 class NoiseIID(ABC):
 
-    def __init__(self):
-        pass
+    def __init__(self, sample_size: INT_DTYPE):
+        self.sample_size = sample_size
 
     @abstractmethod
     def sample(self, size: INT_DTYPE) -> ARRAY:
-        """Sample from the noise distribution."""
+        """Sample one realization from the noise distribution."""
         pass
 
-    def __call__(self, x: ARRAY) -> ARRAY:
-        """Add noise to the input data."""
-        return x + self.sample(len(x))
+    def __call__(self, size: INT_DTYPE) -> ARRAY:
+        """Generate noise samples."""
+        return [self.sample(size) for _ in range(self.sample_size)]
 
 
 class WhiteNoise(NoiseIID):
 
-    def __init__(self, mean: FLOAT_DTYPE, std: FLOAT_DTYPE, symmetric: bool = True):
-        super().__init__()
+    def __init__(
+        self,
+        mean: FLOAT_DTYPE,
+        std: FLOAT_DTYPE,
+        sample_size: INT_DTYPE,
+        symmetric: bool,
+    ):
+        super().__init__(sample_size)
         self.mean = mean
         self.std = std
         self.symmetric = symmetric
@@ -53,8 +64,14 @@ class WhiteNoise(NoiseIID):
 
 class UniformNoise(NoiseIID):
 
-    def __init__(self, low: FLOAT_DTYPE, high: FLOAT_DTYPE, symmetric: bool = True):
-        super().__init__()
+    def __init__(
+        self,
+        low: FLOAT_DTYPE,
+        high: FLOAT_DTYPE,
+        sample_size: INT_DTYPE,
+        symmetric: bool,
+    ):
+        super().__init__(sample_size)
         self.low = low
         self.high = high
         self.symmetric = symmetric
@@ -68,8 +85,13 @@ class UniformNoise(NoiseIID):
 
 class BernoulliNoise(NoiseIID):
 
-    def __init__(self, prob: FLOAT_DTYPE, symmetric: bool = True):
-        super().__init__()
+    def __init__(
+        self,
+        prob: FLOAT_DTYPE,
+        sample_size: INT_DTYPE,
+        symmetric: bool,
+    ):
+        super().__init__(sample_size)
         self.prob = prob
         self.symmetric = symmetric
 
@@ -82,8 +104,13 @@ class BernoulliNoise(NoiseIID):
 
 class PoissonNoise(NoiseIID):
 
-    def __init__(self, lam: FLOAT_DTYPE, symmetric: bool = True):
-        super().__init__()
+    def __init__(
+        self,
+        lam: FLOAT_DTYPE,
+        sample_size: INT_DTYPE,
+        symmetric: bool,
+    ):
+        super().__init__(sample_size)
         self.lam = lam
         self.symmetric = symmetric
 
@@ -92,6 +119,3 @@ class PoissonNoise(NoiseIID):
         if self.symmetric:
             return symmetric_noise(noise)
         return noise
-
-
-# NOTE: Add more noise types as needed

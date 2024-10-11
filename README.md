@@ -1,136 +1,113 @@
-# Python Laplace Inverse Transformation
-`Pylit`
+# Welcome to Pylit 🚀!
+**✨Python Laplace Inverse Transformation✨**
 
-This software provides  a Python implementation of the inverse Laplace Transformation.
+This software provides a Python implementation of the inverse Laplace Transformation.
 
-## 📜 License
+### 📜 License
 
 The project is licensed under the [MIT License](LICENSE.txt).
 
-## 💬 Citations
+### 💬 Citations
 
 - Inverse Laplace transform in quantum many-body theory. [Alexander Benedix Robles](a.benedix-robles@hzdr.de), [Phil-Alexander Hofmann](mailto:philhofmann@outlook.com), [Tobias Dornheim](t.dornheim@hzdr.de), [Michael Hecht](m.hecht@hzdr.de)
 
-## 👥 Team and Support
+### 👥 Team and Support
 
 - [Phil-Alexander Hofmann](https://github.com/philippocalippo/)
 - [Alexander Benedix Robles](https://github.com/alexanderbenedix/)
 
-## 🙏 Acknowledgments
+### 🙏 Acknowledgments
 
 We would like to acknowledge:
+
 - [Dr. Tobias Dornheim](https://www.casus.science/de-de/team-members/dr-tobias-dornheim/) - [CASUS](https://www.casus.science/) ([HZDR](https://www.hzdr.de/)),
 - [Prof. Dr. Michael Hecht](https://www.casus.science/de-de/team-members/michael-hecht/) - [CASUS](https://www.casus.science/) ([HZDR](https://www.hzdr.de/)),
 
 and the support and resources provided by the [Center for Advanced Systems Understanding](https://www.casus.science/) ([Helmholtz-Zentrum Dreden-Rossendorf](https://www.hzdr.de/)) where the development of this project took place.
 
-## 📝 Remarks
+### 📝 Remarks
 
 This project originated from a prototype developed by Alexander Benedix Robles. His initial work laid the foundation for the current implementation.
 
-## 💻 Installation Guide
-Please follow the steps below:
+### 💻 Installation Guide
 
-1. Clone the project:
+1. **Clone the repository**
+
 ```bash
 git clone https://github.com/phil-hofmann/pylit.git
+cd pylit
 ```
 
-2. Open Anaconda prompt.
+2. **Make the shell scripts executable**
 
-3. Create a virtual environment:
 ```bash
-conda env create -f environment.yml
+chmod +x app_setup.sh app_start.sh
 ```
 
-4. Activate environment:
+3. **Run the setup**
+
 ```bash
-conda activate pylit
+./setup.sh
 ```
 
-5. Install using pip:
+### ⚙️ Usage Guide
+
+Follow these steps to get started with your workspace and run your experiments.
+
+1. **Create a workspace folder**
+   Create a dedicated workspace folder on your local file system for your projects.
+
+2. **Start Pylit**
+
+   ```bash
+   ./app_start.sh
+   ```
+
+3. **Configure settings**
+
+   - Navigate to 'settings'
+   - Change the workspace variable to point to your created workspace directory
+   - Save the settings and refresh the page
+
+4. **Create your first experiment**
+
+   - Navigate to 'experiment'
+   - Begin by typing a name and hit enter
+
+5. **Finalize Experiment Setup**
+
+   - Once you've completed setting up your experiment, save it and you're ready to run!
+   - Running the experiment via terminal is optional.
+
+### 🚀 Running via Terminal
+
+6. **Activate the virtual environment**
+   Open a new terminal tab and activate the virtual environment
+
 ```bash
-pip install -e .
+   source venv/bin/activate
 ```
 
-6. If you want to deactivate the environment:
-```bash
-conda deactivate
-```
+6. **Navigate to your workspace**
 
-## 📚 Documentation Guide
-Please follow the steps below:
+   Navigate to your workspace directory
 
-1. Make sure that ``pandoc`` is installed on your local device:
-``https://pandoc.org/installing.html``
+   ```bash
+   cd pylit-workspace
+   ```
 
-2. Open Anaconda prompt and navigate to `Pylit`.
+7. **Run the experiment script**
 
-3. Clean the build directory:
-```bash
-make clean
-```
+   Execute your experiment by running the script
 
-4. Build the documentation:
-```bash
-make html
-```
+   ```bash
+   poetry run python <exp_name>/run.py
+   ```
 
-5. Open the index.html file located in the `docs/build/html/` directory.
-
-## 🚀 Usage Guide
-
-Follow these steps to get started with your workspace and run your experiments:
-
-1. **Create a Workspace Folder**
-   - Create a dedicated workspace folder on your local file system for your projects.
-
-2. **Navigate to the Frontend Directory**
-   - Open your terminal and run:
-     ```bash
-     cd pylit/src/pylit/frontend/
-     ```
-
-3. **Activate the Conda Environment**
-   - Activate the environment with the following command:
-     ```bash
-     conda activate pylit
-     ```
-
-4. **Start the Application**
-   - Run the Streamlit app:
-     ```bash
-     streamlit run 👋_hello.py
-     ```
-
-5. **Configure Settings**
-   - Go to the settings within the app.
-   - Change the workspace variable to point to your workspace directory.
-   - Save the settings.
-
-6. **Create Your Experiment**
-   - Navigate to the "Experiment" section in the app.
-   - Start creating your experiment!
-
-7. **Finalize Experiment Setup**
-   - Once you've finished setting up your experiment, go back to your terminal.
-
-8. **Navigate to Your Workspace**
-   - In the terminal, navigate to your workspace directory.
-
-9. **Reactivate the Conda Environment**
-   - Ensure the environment is active by running:
-     ```bash
-     conda activate pylit
-     ```
-
-10. **Run the Experiment Script**
-    - Execute your experiment script by running:
-      ```bash
-      python <exp_name>/run.py
-      ```
-
-11. **View Results**
-    - Wait for the experiment to complete and view your results. Voilà!
+8. **View Results**
+   Wait for the experiment to complete and view your results. Voilà!
 
 Happy experimenting! 🎉
+
+### 🏗️ DIY
+How to implement [Methods](#), [Models](#) and [Optimizers](#) by yourself.

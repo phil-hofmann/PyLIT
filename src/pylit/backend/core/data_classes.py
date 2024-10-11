@@ -6,10 +6,6 @@ from pylit.backend.core.utils import empty_array
 @dataclass
 class Configuration:
     name: str = ""
-    scaleMaxF: bool = True
-    PosS: bool = True
-    ExtS: bool = True
-    trapzS: bool = True
     noiseActive: bool = False
     noiseName: str = ""
     noiseParams: dict = field(default_factory=dict)
@@ -24,44 +20,56 @@ class Configuration:
     x0Reset: bool = False
     adaptiveActive: bool = False
     adaptiveResiduumMode: bool = False
-    scalingName: str = ""
     modelName: str = ""
     modelParams: dict = field(default_factory=dict)
-    plot_coeffs: bool = True
-    plot_model: bool = True
-    plot_forward_model: bool = True
-    plot_error_model: bool = True
-    plot_error_forward_model: bool = True
 
 
 @dataclass
 class Preparation:
-    omega: ARRAY = field(default_factory=empty_array)
-    modifiedOmega: ARRAY = field(default_factory=empty_array)
-    modifiedOmegaMin: FLOAT_DTYPE = 0.0
-    modifiedOmegaMax: FLOAT_DTYPE = 0.0
-    F: ARRAY = field(default_factory=empty_array)
-    modifiedF: ARRAY = field(default_factory=empty_array)
+    # τ, F:
     tau: ARRAY = field(default_factory=empty_array)
     tauMin: FLOAT_DTYPE = 0.0
     tauMax: FLOAT_DTYPE = 0.0
-    S: ARRAY = field(default_factory=empty_array)
-    modifiedS: ARRAY = field(default_factory=empty_array)
-    expS: FLOAT_DTYPE = 0.0
-    stdS: FLOAT_DTYPE = 0.0
-    forwardModifiedS: ARRAY = field(default_factory=empty_array)
-    forwardModifiedSAbsError: ARRAY = field(default_factory=empty_array)
-    forwardModifiedSMaxError: FLOAT_DTYPE = 0.0
+    F: ARRAY = field(default_factory=empty_array)
+    noiseF: ARRAY = field(default_factory=empty_array)
+
+    # ω, D:
+    omega: ARRAY = field(default_factory=empty_array)
+    omegaMin: FLOAT_DTYPE = 0.0
+    omegaMax: FLOAT_DTYPE = 0.0
+    D: ARRAY = field(default_factory=empty_array)
+    expD: FLOAT_DTYPE = 0.0
+    stdD: FLOAT_DTYPE = 0.0
+    freqMomentsD: ARRAY = field(default_factory=empty_array)
+
+    # L(D)[τ]:
+    forwardD: ARRAY = field(default_factory=empty_array)
+    forwardDAbsError: ARRAY = field(default_factory=empty_array)
+    forwardDMaxError: FLOAT_DTYPE = 0.0
 
 
 @dataclass
 class Output:
-    valsF: ARRAY = field(default_factory=empty_array)
-    valsS: ARRAY = field(default_factory=empty_array)
-    coefficients: ARRAY = field(default_factory=empty_array)
+
+    # Optimization:
     eps: ARRAY = field(default_factory=empty_array)
     residuals: ARRAY = field(default_factory=empty_array)
-    integral: ARRAY = field(default_factory=empty_array)
+
+    # Model:
+    timeScaling: bool = True
+    normalization: bool = True
+    coefficients: ARRAY = field(default_factory=empty_array)
+
+    # S:
+    S: ARRAY = field(default_factory=empty_array)
+    expS: ARRAY = field(default_factory=empty_array)
+    stdS: ARRAY = field(default_factory=empty_array)
+    freqMomentsS: ARRAY = field(default_factory=empty_array)
+
+    # L(S)[τ]:
+    forwardS: ARRAY = field(default_factory=empty_array)
+    forwardSAbsError: ARRAY = field(default_factory=empty_array)
+    forwardSMaxError: ARRAY = field(default_factory=empty_array)
 
 
 @dataclass

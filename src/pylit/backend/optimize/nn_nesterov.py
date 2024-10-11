@@ -1,7 +1,8 @@
 import numpy as np
 import numba as nb
-from pylit.backend.core import Solution
+
 from pylit.backend.utils import svd_optim
+from pylit.backend.core import Method, Solution
 from pylit.global_settings import FLOAT_DTYPE, INT_DTYPE, ARRAY, TOL
 
 
@@ -9,11 +10,11 @@ def nn_nesterov(
     R: ARRAY,
     F: ARRAY,
     x0: ARRAY,
-    method: callable,
+    method: Method,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
-    protocol: bool = False,
     svd: bool = False,
+    protocol: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the Nesterov's accelerated gradient method.
 
@@ -47,7 +48,7 @@ def nn_nesterov(
 
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
-    tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
+    tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)  # TODO check this
 
     # Call subroutine
     x = _nn_nesterov_subroutine(

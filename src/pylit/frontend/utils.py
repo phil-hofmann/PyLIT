@@ -22,16 +22,56 @@ def settings_manager():
         st.session_state.update(load_session_state(PATH_SETTINGS))
 
 
-def state_manager() -> bool:
-    if "workspace" not in st.session_state:
-        st.session_state["workspace"] = PATH_PROJECT
-    if "wide_mode" not in st.session_state:
-        st.session_state["wide_mode"] = True
+def state_manager():
+    if "workspace_as" not in st.session_state:
+        st.session_state["workspace_as"] = PATH_PROJECT
+    if "wide_mode_as" not in st.session_state:
+        st.session_state["wide_mode_as"] = False
+    if "auto_expand_as" not in st.session_state:
+        st.session_state["auto_expand_as"] = True
+    if "non_negative_as" not in st.session_state:
+        st.session_state["non_negative_as"] = True
+    if "detailed_balance_as" not in st.session_state:
+        st.session_state["detailed_balance_as"] = True
+    if "normalization_as" not in st.session_state:
+        st.session_state["normalization_as"] = True
+    if "time_scaling_as" not in st.session_state:
+        st.session_state["time_scaling_as"] = True
+    if "coefficients_as" not in st.session_state:
+        st.session_state["coefficients_as"] = False
+    if "default_model_as" not in st.session_state:
+        st.session_state["default_model_as"] = True
+    if "forward_default_model_as" not in st.session_state:
+        st.session_state["forward_default_model_as"] = True
+    if "forward_default_model_error_as" not in st.session_state:
+        st.session_state["forward_default_model_error_as"] = False
+    if "noise_samples_as" not in st.session_state:
+        st.session_state["noise_samples_as"] = False
+    if "model_as" not in st.session_state:
+        st.session_state["model_as"] = True
+    if "forward_model_as" not in st.session_state:
+        st.session_state["forward_model_as"] = True
+    if "forward_model_error_as" not in st.session_state:
+        st.session_state["forward_model_error_as"] = False
 
 
 def reset_settings():
-    st.session_state["workspace"] = PATH_PROJECT
-    st.session_state["wide_mode"] = True
+    st.session_state["workspace_as"] = PATH_PROJECT
+    st.session_state["wide_mode_as"] = False
+    st.session_state["auto_expand_as"] = True
+    st.session_state["non_negative_as"] = True
+    st.session_state["detailed_balance_as"] = True
+    st.session_state["normalization_as"] = True
+    st.session_state["time_scaling_as"] = True
+    st.session_state["default_model_as"] = True
+    st.session_state["forward_default_model_as"] = True
+    st.session_state["forward_default_model_error_as"] = True
+    st.session_state["noise_samples_as"] = False
+    st.session_state["coefficients_as"] = False
+    st.session_state["model_as"] = True
+    st.session_state["forward_model_as"] = True
+    st.session_state["model_error_as"] = False
+    st.session_state["forward_model_error_as"] = False
 
 
 def is_data_file(file_path: str):
@@ -57,8 +97,21 @@ def is_data_file(file_path: str):
 def load_settings(session_state):
     settings = {}
     keys = [  # TODO put setting keys into frontend/settings.py
-        "workspace",
-        "wide_mode",
+        "workspace_as",
+        "wide_mode_as",
+        "auto_expand_as",
+        "non_negative_as",
+        "detailed_balance_as",
+        "normalization_as",
+        "time_scaling_as",
+        "coefficients_as",
+        "default_model_as",
+        "forward_default_model_as",
+        "forward_default_model_error_as",
+        "noise_samples_as",
+        "model_as",
+        "forward_model_as",
+        "forward_model_error_as",
     ]
     for key in keys:
         if key in session_state:
@@ -66,9 +119,12 @@ def load_settings(session_state):
     return settings
 
 
-def save_settings(filename, settings):
+def save_settings(filename, settings) -> bool:
+    if not os.path.exists(settings.get("workspace_as")):
+        return False
     with open(filename, "w") as file:
         json.dump(settings, file)
+    return True
 
 
 def load_session_state(filename):
