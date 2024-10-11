@@ -47,7 +47,7 @@ chmod +x app_setup.sh app_start.sh
 3. **Run the setup**
 
 ```bash
-./setup.sh
+./app_setup.sh
 ```
 
 ### ⚙️ Usage Guide
