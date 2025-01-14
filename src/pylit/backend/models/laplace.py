@@ -1,74 +1,49 @@
 import numpy as np
 from typing import List
 
-from pylit.backend.utils import str_to_int_array, int_array_to_str
-from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE
-from pylit.backend.models.rlrm import RegularLinearRegressionModel
+from pylit.global_settings import FLOAT_DTYPE
+from pylit.backend.models.lrm import LinearRegressionModel
 
 
-class LaplaceRLRM(RegularLinearRegressionModel):
-    """This is the regular linear regression model with Laplace model functions.
-
-    TODO rename b into bs to be consistent with the other models."""
+class LaplaceLRM(LinearRegressionModel):
+    """This is the linear regression model with Gaussian model functions."""
 
     def __init__(
-        self, omegas: ARRAY, b: ARRAY, beta: FLOAT_DTYPE = 1.0, order: str = "0,1"
-    ):
+        self,
+        # tau: np.ndarray[FLOAT_DTYPE],
+        # mu: np.ndarray[FLOAT_DTYPE],
+        # sigmas: np.ndarray[FLOAT_DTYPE],
+        tau: np.ndarray,
+        mu: np.ndarray,
+        sigma: np.ndarray,
+    ) -> None:
         """Initialize the model."""
-        # Integrity
-        if not isinstance(omegas, ARRAY):
-            raise TypeError(f"The support points must be of type {ARRAY}.")
-        if not isinstance(b, ARRAY):
-            raise TypeError(f"The parameter 'b' must be of type {ARRAY}.")
-        if np.any(b < 0.0) or np.any(b > 1.0):
-            raise ValueError("The parameter 'b' must be in (0, 1).")
         # Type Conversion
-        omegas = omegas.astype(FLOAT_DTYPE)
-        b = b.astype(FLOAT_DTYPE)
-        beta = FLOAT_DTYPE(beta)
-        order = str(order)
+        tau = np.asarray(tau).astype(FLOAT_DTYPE)
+        mu = np.asarray(mu).astype(FLOAT_DTYPE)
+        sigma = np.asarray(sigma).astype(FLOAT_DTYPE)
+
+        # Integrity
+        if np.any(sigma <= 0.0) or np.any(sigma > 1.0):
+            raise ValueError("The standard deviations must be in (0, 1).")
+
         # Initialize the Parent Class
-        if order == "0,1":
-            super().__init__(name="LaplaceRLRM", params=[omegas, b])
-        elif order == "1,0":
-            super().__init__(name="LaplaceRLRM", params=[b, omegas])
-        else:
-            raise ValueError('The order must be "0,1" or "1,0".')
-        # Set attributes
-        self._beta = beta
-        self._order = str_to_int_array(order)
+        super().__init__("LaplaceLRM", tau, [mu, sigma])
 
-    def _model_function(self, param: List[ARRAY], x: ARRAY) -> ARRAY:
-        """The model function."""
+    def kernel(
+        self,
+        omega: np.ndarray[FLOAT_DTYPE],
+        param: List[float],
+    ) -> np.ndarray:
+        """The Laplacian kernel function."""
+        mu, sigma = param
+        return (1 / (2 * sigma)) * np.exp(-np.abs(omega - mu) / sigma)
 
-        omega, b = param[self._order]
-        scaling = np.exp(self._beta / 2 * x)
-
-        # Using vectorization:
-        return scaling * (1 / (2 * b)) * np.exp(-np.abs(x - omega) / b)
-
-    def _compute_regression_matrix(self, grid_points: ARRAY) -> ARRAY:
-        """Override."""
-
-        # Alternative: return super()._compute_regression_matrix()
-
-        # Initialise the regression matrix
-        reg_mat = np.zeros((grid_points.shape[0], self._degree), dtype=FLOAT_DTYPE)
-
-        for i in range(self._degree):
-            mi = self._multi_index_set[i]
-            omega, b = (
-                self._params[self._order[0]][mi[0]],
-                self._params[self._order[1]][mi[1]],
-            )
-
-            # Using vectorization:
-            tau = grid_points - self._beta / 2
-            reg_mat[:, i] = np.exp(-tau * omega) / (1 - b**2 * tau**2)
-
-        return reg_mat
-
-
-if __name__ == "__main__":
-
-    pass
+    def ltransform(
+        self,
+        tau: np.ndarray[FLOAT_DTYPE],
+        param: List[float],
+    ) -> np.ndarray[FLOAT_DTYPE]:
+        """The Laplace transform of the Laplacian kernel."""
+        mu, sigma = param
+        return np.exp(-mu * tau) / (1 - sigma**2 * tau**2)

@@ -245,10 +245,9 @@ plot_results(
         # Data Checks
         if dl.data is None:
             raise ValueError("Data file for 'F' is empty.")
-        if len(dl.data.shape) != 2:
+        if len(dl.data.shape) != 2 or dl.data.shape[1] != 2:
             raise ValueError("Data file for 'F' must have exactly 2 columns.")
-        if dl.data.shape[1] != 2:
-            raise ValueError("Data file for 'F' must have exactly 2 columns.")
+
         tau, F = dl.data.T
 
         # Sort tau ascending
@@ -363,11 +362,15 @@ plot_results(
         if print_name:
             print("\nModel Name: ", modelName)
         modelParams = self.config.modelParams
+        if "tau" in modelParams:
+            del modelParams["tau"]  # TODO solve differently!
         model_class = getattr(models, modelName)
-        model = model_class(**modelParams)
-        model.grid_points = self.prep.tau
+        model = model_class(self.prep.tau, **modelParams)
         if time_scaling:
-            model = models.scaling.linear(lrm=model)
+            model = models.linear_scaling(lrm=model)
+        # TODO Add detailed balance decorator
+        model = models.detailed_balance(lrm=model)
+        model.compute_regression_matrix()
         self.model = model
 
     def _init_method(self):

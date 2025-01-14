@@ -6,10 +6,10 @@ from pylit.global_settings import ARRAY
 
 MODELS = Options(
     [
-        Option(ref="GaussRLRM", name="Linear Gaussian Regression"),
-        Option(ref="LaplaceRLRM", name="Linear Laplace Regression"),
-        # Option(ref="LogisticRLRM", name="Linear Logistic Regression"), # TODO fix some issue...
-        # Option(ref="CauchyRLRM", name="Linear Cauchy Regression"), # TODO fix some issue...
+        Option(ref="GaussLRM", name="Linear Gaussian Regression"),
+        Option(ref="LaplaceLRM", name="Linear Laplace Regression"),
+        Option(ref="CauchyLRM", name="Linear Cauchy Regression"),
+        Option(ref="UniformLRM", name="Linear Uniform Regression"),
     ]
 )
 
@@ -18,8 +18,8 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
     return ParamMap(
         [
             Param(
-                name="omegas",
-                label="Omegas",
+                name="mu",
+                label="Mu",
                 my_type=ARRAY,
                 lower_value=np.round(
                     exp.prep.omegaMin,
@@ -29,16 +29,8 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
                 num_value=int(len(exp.prep.omega) / 20),
             ),
             Param(
-                name="sigmas",
-                label="Sigmas",
-                my_type=ARRAY,
-                lower_value=np.round(exp.prep.stdD, 2),
-                upper_value=np.round(10 * exp.prep.stdD, 2),
-                num_value=int(1 / exp.prep.stdD),
-            ),
-            Param(
-                name="b",
-                label="b",
+                name="sigma",
+                label="Sigma",
                 my_type=ARRAY,
                 lower_value=np.round(exp.prep.stdD, 2),
                 upper_value=np.round(10 * exp.prep.stdD, 2),
@@ -52,10 +44,7 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
                 ignore=True,
             ),
             Param(
-                name="order",
-                label="Order",
-                default="0,1",
-                my_type=str,
+                name="tau",
                 ignore=True,
             ),
         ]

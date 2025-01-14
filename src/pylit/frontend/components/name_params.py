@@ -70,9 +70,8 @@ def NameParams(
     label: str = "Name",
     name: str = "",
 ):
-
+    param_map = ParamMap([]) if param_map is None else param_map
     my_id_name = f"{my_id}_name"
-
     if my_id not in st.session_state:
         st.session_state[my_id] = {"name": name, "params": {}}
 
@@ -87,11 +86,16 @@ def NameParams(
 
     # Translate selected value to reference class
     st.session_state[my_id]["name"] = options.find(st.session_state[my_id_name]).ref
+
     st.markdown("<hr style='margin: 0px;'>", unsafe_allow_html=True)
     st.markdown("**Parameters**")
+
     if st.session_state[my_id]["name"] != "":
         # Extract parameters from reference
         params = extract_params(func=getattr(ref, st.session_state[my_id]["name"]))
+
+        # Delete parameters that are ignored
+        params = {k: v for k, v in params.items() if not v.ignore}
 
         for param_name, param in params.items():
             my_id_param = f"{my_id}_{param_name}"

@@ -89,6 +89,10 @@ def _nn_nesterov_subroutine(
     if svd:
         R, F, x0, V = svd_optim(R, F, x0)
 
+    # Print header for protocol
+    if protocol:
+        print("Step", "Error")
+
     # Subroutine implementation:
     for k in range(maxiter):
         # Update momentum
@@ -113,6 +117,7 @@ def _nn_nesterov_subroutine(
         #  even if the solution is close to the minimum of the objective function.)
         fy1 = f(y, R, F)
         if k > 0 and np.abs(fy - fy1) < tol:
+            print("Converged by tolerance.")
             break
         fy = fy1
 
@@ -124,7 +129,7 @@ def _nn_nesterov_subroutine(
 
         # Print protocol
         if protocol:
-            print("step: " + str(k + 1) + " of " + str(maxiter))
+            print(k + 1, fy1)
 
     return y if V is None else V @ y
 
