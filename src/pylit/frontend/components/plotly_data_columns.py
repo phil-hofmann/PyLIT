@@ -10,8 +10,9 @@ def PlotlyDataColumns(my_id: str, file_path: str):
     dl.fetch()
 
     # Convert data to DataFrame
+    length = dl.data.shape[1] if len(dl.data.shape) > 1 else 1
     df = pd.DataFrame(
-        dl.data, columns=[f"Column {i+1}" for i in range(dl.data.shape[1])]
+        dl.data, columns=[f"Column {i+1}" for i in range(length)]
     )
 
     # Create traces for each column
@@ -28,7 +29,6 @@ def PlotlyDataColumns(my_id: str, file_path: str):
 
     # Create layout
     layout = go.Layout(
-        title="Plot of Columns",
         xaxis=dict(title="Index"),
         yaxis=dict(title="Value"),
     )

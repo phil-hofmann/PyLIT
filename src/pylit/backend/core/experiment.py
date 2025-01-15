@@ -1,10 +1,9 @@
 import os
 import numpy as np
-import numba as nb
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
+import pandas as pd
+
 from pylit.backend import models, methods, optimize
-from pylit.global_settings import ARRAY, FLOAT_DTYPE
+from pylit.global_settings import ARRAY, FLOAT_DTYPE, MOMENT_ORDERS
 from pylit.backend.core import (
     DataLoader,
     Configuration,
@@ -14,9 +13,9 @@ from pylit.backend.core import (
     noise_conv,
 )
 from pylit.backend.core.utils import (
-    extend_on_negative_axis,
-    extend_S,
+    complete_detailed_balance,
     exp_std,
+    moments,
     save_to_json,
     load_from_json,
 )
@@ -24,131 +23,162 @@ from pylit.frontend.utils import (  # TODO avoid importing frontend in backend
     extract_params,
 )
 
-MODERN_GREEN = "#50C878"
-
-# TODO:
-# - Add seperate methods for saving config, prep, output ... (INTEGRITY CHECKS)
-
 
 class Experiment:
 
-    def __init__(self, name: str, workspace: str = "/", make: bool = False):
+    def __init__(
+        self,
+        name: str,
+        workspace: str = "/",
+    ):
         self.name = name
+
+        # Directories
         self.workspace = workspace
         self.directory = os.path.join(workspace, name)
-        self.path_F = os.path.join(self.directory, "F.csv")
-        self.path_S = os.path.join(self.directory, "S.csv")
-        self.config_path = os.path.join(self.directory, "config.json")
-        self.prep_path = os.path.join(self.directory, "prep.json")
-        self.output_path = os.path.join(self.directory, "output.json")
-        self.path_run = os.path.join(self.directory, "run.py")
-        self.plots_dir = os.path.join(self.directory, "plots")
+        self.source_directory = os.path.join(self.directory, "src")
+        self.source_json_directory = os.path.join(self.source_directory, "json")
+        self.source_csv_directory = os.path.join(self.source_directory, "csv")
+        self.plots_directory = os.path.join(self.directory, "plots")
+        self.plots_default_model_directory = os.path.join(
+            self.plots_directory, "default-model"
+        )
+        self.plots_model_directory = os.path.join(self.plots_directory, "model")
+        self.plots_default_model_html_directory = os.path.join(
+            self.plots_default_model_directory, "html"
+        )
+        self.plots_default_model_png_directory = os.path.join(
+            self.plots_default_model_directory, "png"
+        )
+        self.plots_model_html_directory = os.path.join(
+            self.plots_model_directory, "html"
+        )
+        self.plots_model_png_directory = os.path.join(self.plots_model_directory, "png")
+        self._create_directories()
 
-        self._check_directories(make)
-        self._check_json_files(make)
+        # Files
+        self.path_F = os.path.join(self.source_csv_directory, "F.csv")
+        self.path_D = os.path.join(self.source_csv_directory, "D.csv")
+        self.path_L_S = os.path.join(self.source_csv_directory, "L(S).csv")
+        self.path_S = os.path.join(self.source_csv_directory, "S.csv")
+        self.config_path = os.path.join(self.source_json_directory, "config.json")
+        self.prep_path = os.path.join(self.source_json_directory, "prep.json")
+        self.output_path = os.path.join(self.source_json_directory, "output.json")
+        self.path_run = os.path.join(self.directory, "run.py")
+        self._load_files()
+        # self.create_run_py()
 
         if os.path.isfile(self.output_path):
-            self._init_model()
+            # TODO Additional check if the output is valid!
+            self._init_model(self.output.timeScaling, self.output.normalization)
+
         else:
             self.model = None
             self.method = None
             self.output = None
 
     @property
-    def exported(self):
+    def imported_F(self):
         return (
             self.prep is not None
-            and (
-                self.prep.tau is not None
-                and self.prep.F is not None
-                and self.prep.omega is not None
-                and self.prep.S is not None
-            )
-            and (
-                self.prep.tau.shape == self.prep.F.shape
-                and self.prep.omega.shape == self.prep.S.shape
-            )
-            and (self.prep.tau.size > 0 and self.prep.omega.size > 0)
+            and (self.prep.tau is not None and self.prep.F is not None)
+            and (self.prep.tau.shape == self.prep.F.shape)
+            and (self.prep.tau.size > 0)
         )
 
     @property
-    def prepared(self):
-        # TODO enhance to test all and put this somewhere else?
+    def imported_D(self):
+        # There is more to check, but this is not necessary.
         return (
             self.prep is not None
-            and (
-                self.prep.modifiedF is not None
-                and self.prep.modifiedOmega is not None
-                and self.prep.modifiedS is not None
-            )
-            and (
-                self.prep.modifiedF.size > 0
-                and self.prep.modifiedOmega.size > 0
-                and self.prep.modifiedS.size > 0
-            )
+            and (self.prep.omega is not None and self.prep.D is not None)
+            and (self.prep.omega.shape == self.prep.D.shape)
+            and (self.prep.omega.size > 0)
         )
 
     @property
-    def ready_to_finish(self):
-        if not self.exported or not self.prepared:
-            return False
-        if self.config.methodName == "":
-            return False
-        if self.config.methodParams == {}:
-            return False
-        if self.config.modelName == "":
-            return False
-        if self.config.modelParams == {}:
-            return False
-        if self.config.optimName == "":
-            return False
-        if self.config.optimParams == {}:
-            return False
-        if self.config.scalingName == "":
-            return False
-        if self.config.scalingParams == {}:
-            return False
-        return True
+    def imported(self):
+        return self.imported_F and self.imported_D
 
-    def _check_directories(self, make: bool):
-        if os.path.isdir(self.directory):
-            pass
-        elif make:
+    def _create_directories(self):
+        if not os.path.isdir(self.directory):
             os.makedirs(self.directory)
-        else:
-            raise NotADirectoryError(
-                f"The directory '{self.directory}' does not exist. Please set 'make' to True."
-            )
+        if not os.path.isdir(self.source_directory):
+            os.makedirs(self.source_directory)
+        if not os.path.isdir(self.source_json_directory):
+            os.makedirs(self.source_json_directory)
+        if not os.path.isdir(self.source_csv_directory):
+            os.makedirs(self.source_csv_directory)
+        if not os.path.isdir(self.plots_directory):
+            os.makedirs(self.plots_directory)
+        if not os.path.isdir(self.plots_default_model_directory):
+            os.makedirs(self.plots_default_model_directory)
+        if not os.path.isdir(self.plots_model_directory):
+            os.makedirs(self.plots_model_directory)
+        if not os.path.isdir(self.plots_default_model_html_directory):
+            os.makedirs(self.plots_default_model_html_directory)
+        if not os.path.isdir(self.plots_default_model_png_directory):
+            os.makedirs(self.plots_default_model_png_directory)
+        if not os.path.isdir(self.plots_model_html_directory):
+            os.makedirs(self.plots_model_html_directory)
+        if not os.path.isdir(self.plots_model_png_directory):
+            os.makedirs(self.plots_model_png_directory)
 
-        # Create plots directory
-        if not os.path.isdir(self.plots_dir):
-            os.makedirs(self.plots_dir)
+    def create_run_py(
+        self,
+        coefficients: bool,
+        model: bool,
+        forward_model: bool,
+        forward_model_error: bool,
+    ):
+        if not os.path.isfile(self.path_run):
+            run_py_content = f"""
+# This file was automatically generated by pylit.\n
+# Path: {self.path_run}\n
+# To run the experiment, execute this file with Python:\n
+# source venv/bin/activate\n
+# poetry shell\n
+# python {self.path_run}\n
+# deactivate\n
+from pylit.backend.core import Experiment\n
+from pylit.backend.core.plot_utils import plot_results\n
+name="{self.name}"\n
+workspace="{self.workspace}"\n
+exp = Experiment(name, workspace)\n
+exp.fit_model()\n
+plot_results(
+    exp=exp,
+    coefficients={coefficients},
+    model={model},
+    forward_model={forward_model},
+    forward_model_error={forward_model_error},
+)"""
 
-    def _check_json_files(self, make: bool):
-        # Check and load config.json
+            # Write the content to run.py
+            with open(self.path_run, "w") as file:
+                file.write(run_py_content)
+
+    def _load_files(self):
+        # Load config.json
         if os.path.isfile(self.config_path):
             self.config = load_from_json(Configuration, self.config_path)
-        elif make:
-            self.config = Configuration()
-            self.config.name = self.name  #  TODO maybe remove this
         else:
-            raise FileNotFoundError(
-                f"The configuration file '{self.config_path}' does not exist. Please set 'make' to True."
-            )
+            self.config = Configuration()
+            self.config.name = self.name  #  TODO remove this somewhen
 
-        # Check and load prep.json
+        # Load prep.json
         if os.path.isfile(self.prep_path):
             self.prep = load_from_json(Preparation, self.prep_path)
         else:
             self.prep = Preparation()
 
-        # Check and load output.json
+        # Load output.json
         if os.path.isfile(self.output_path):
             self.output = load_from_json(Output, self.output_path)
         else:
             self.output = Output()
 
-    def _check_save_config(self):
+    def save_config(self):
         # Model Params
         modelName = self.config.modelName
         if modelName != "":
@@ -166,7 +196,7 @@ class Experiment:
         # Method Params
         methodName = self.config.methodName
         if methodName != "":
-            self._init_model() # NOTE Initialize model!
+            # self._init_model()  # NOTE !NOT! Initialize model!?!?!?!
             methodParams = self.config.methodParams
             method_func = getattr(methods, methodName)
             method_func_params = extract_params(method_func).keys()
@@ -175,17 +205,6 @@ class Experiment:
                 for key in method_func_params
             }  # Only keep methodParams that are in the method_func_params else set to None
             self.config.methodParams = methodParams  # Update methodParams
-            # Add Evaluation Matrix
-            if "E" in self.config.methodParams:
-                self.config.methodParams["E"] = self.model(
-                    self.prep.modifiedOmega, matrix=True
-                )
-            # Add Model Matrix
-            if "S" in self.config.methodParams:
-                self.config.methodParams["S"] = self.prep.modifiedS
-            # Add omegas
-            if "omegas" in self.config.methodParams:
-                self.config.methodParams["omegas"] = self.prep.modifiedOmega
 
         # Noise Params
         noiseName = self.config.noiseName
@@ -218,327 +237,163 @@ class Experiment:
         # Save config to JSON
         save_to_json(self.config, self.config_path)
 
-    def import_F(self):
+    def import_F(self) -> bool:
         # Fetch tau, F from the data file
         dl = DataLoader(self.path_F)
         dl.fetch()
+
+        # Data Checks
         if dl.data is None:
             raise ValueError("Data file for 'F' is empty.")
-        if len(dl.data.shape) != 2:
+        if len(dl.data.shape) != 2 or dl.data.shape[1] != 2:
             raise ValueError("Data file for 'F' must have exactly 2 columns.")
-        self.prep.tau, self.prep.F = dl.data.T  # 0 ... tau, 1 ... F
-        dl.clear()
 
-    def import_S(self):
-        # Fetch omega, S from the data file
-        dl = DataLoader(self.path_S)
+        tau, F = dl.data.T
+
+        # Sort tau ascending
+        idx = np.argsort(tau)
+        tau, F = tau[idx], F[idx]
+
+        # Save to Preparation
+        self.prep.tau, self.prep.F = tau, F
+
+        # Tau Min, Tau Max
+        self.prep.tauMin = np.min(tau)
+        self.prep.tauMax = np.max(tau)
+
+        # Clear DataLoader and save to JSON
+        dl.clear()
+        save_to_json(self.prep, self.prep_path)
+
+        return True
+
+    def import_D(self, non_negative=True, detailed_balance=True) -> bool:
+        # Fetch omega, D from the data file
+        dl = DataLoader(self.path_D)
         dl.fetch()
-        if dl.data is None:
-            raise ValueError("Data file for 'S' is empty.")
-        if len(dl.data.shape) != 2:
-            raise ValueError("Data file for 'S' must have exactly 2 columns.")
-        self.prep.omega, self.prep.S = dl.data.T  #  0 ... omega, 1 ... S
-        dl.clear()
 
-    def prepare(self):
-        # Check config and save (so far) to JSON
-        self._check_save_config()
-        self._scale_and_noise_F()
-        self.prep.tauMin, self.prep.tauMax = np.min(self.prep.tau), np.max(
-            self.prep.tau
+        # Data Checks
+        if dl.data is None:
+            raise ValueError("Data file for 'D' is empty.")
+        if len(dl.data.shape) != 2:
+            raise ValueError("Data file for 'D' must have exactly 2 columns.")
+        if dl.data.shape[1] != 2:
+            raise ValueError("Data file for 'D' must have exactly 2 columns.")
+        omega, D = dl.data.T
+
+        # Sort omega ascending
+        idx = np.argsort(omega)
+        omega, D = omega[idx], D[idx]
+
+        # Non-Negativity
+        if non_negative:
+            D = np.maximum(0, D)
+
+        # Detailed Balance
+        if detailed_balance:
+            omega, D = complete_detailed_balance(omega, D, beta=self.prep.tauMax)
+        self.prep.omega, self.prep.D = omega, D
+
+        # Omega Min, Omega Max
+        self.prep.omegaMin = np.min(omega)
+        self.prep.omegaMax = np.max(omega)
+
+        # Expected Value and Standard Deviation
+        self.prep.expD, self.prep.stdD = exp_std(omega, D)
+
+        # Frequency Moments
+        self.prep.freqMomentsD = moments(
+            omega,
+            D,
+            MOMENT_ORDERS,
         )
-        self._extend_and_scale_S()
-        self.prep.modifiedOmegaMin, self.prep.modifiedOmegaMax = np.min(
-            self.prep.modifiedOmega
-        ), np.max(self.prep.modifiedOmega)
-        self.prep.expS, self.prep.stdS = exp_std(
-            self.prep.modifiedOmega, self.prep.modifiedS
-        )
-        self.prep.forwardModifiedS = np.array(
+
+        # Forward S, Forward S Abs Error, Forward S Max Error
+        self.prep.forwardD = np.array(
             [
                 np.trapz(
-                    self.prep.modifiedS * np.exp(-self.prep.modifiedOmega * tau),
-                    self.prep.modifiedOmega,
+                    D * np.exp(-omega * tau),
+                    omega,
                 )
                 for tau in self.prep.tau
             ],
             dtype=FLOAT_DTYPE,
         )
-        self.prep.forwardModifiedSAbsError = np.abs(
-            self.prep.forwardModifiedS - self.prep.modifiedF
-        )
-        self.prep.forwardModifiedSMaxError = np.max(self.prep.forwardModifiedSAbsError)
-        # Save preparation to JSON
+        self.prep.forwardDAbsError = np.abs(self.prep.forwardD - self.prep.F)
+        self.prep.forwardDMaxError = np.max(self.prep.forwardDAbsError)
+
+        # Clear DataLoader and save to JSON
+        dl.clear()
         save_to_json(self.prep, self.prep_path)
-
-    def _scale_and_noise_F(self):
-        modifiedF = np.copy(self.prep.F)
-        if self.config.scaleMaxF:
-            modifiedF /= np.max(modifiedF)
-        if self.config.noiseActive and self.config.noiseConvActive:
-            noise = getattr(noise_iid, self.config.noiseName)(
-                *list(self.config.noiseParams.values())
-            )(
-                np.zeros_like(modifiedF)
-            )  # Create noise
-            noise = getattr(noise_conv, self.config.noiseConvName)(
-                *list(self.config.noiseConvParams.values())
-            )(
-                noise
-            )  # Apply convolution
-            modifiedF += noise  # Add noise
-        if self.config.noiseActive and not self.config.noiseConvActive:
-            # print("Noise and Convolution")
-            # print("=====================")
-            # print("Noise: ", self.config.noiseName)
-            # print("Noise Params: ", self.config.noiseParams)
-            modifiedF = getattr(noise_iid, self.config.noiseName)(
-                *list(self.config.noiseParams.values())
-            )(
-                modifiedF
-            )  # Noisy F
-        self.prep.modifiedF = modifiedF
-
-    def _extend_and_scale_S(self):
-        modifiedOmega = np.copy(self.prep.omega)
-        modifiedS = np.copy(self.prep.S)
-        if self.config.PosS:
-            modifiedS = np.maximum(0, modifiedS)
-        if self.config.ExtS:
-            modifiedOmega = extend_on_negative_axis(self.prep.omega)
-            modifiedS = extend_S(modifiedS, self.prep.omega, self.prep.tauMax)
-        if self.config.trapzS:
-            modifiedS /= np.trapz(modifiedS, modifiedOmega)
-        self.prep.modifiedOmega = modifiedOmega
-        self.prep.modifiedS = modifiedS
-
-    def plot_prep(self):
-        self._matplot_prep_data()
-        self._matplot_prep_forward()
-        return self._plotly_prep_data(), self._plotly_prep_forward()
-
-    def _matplot_prep_data(self):
-        # Set figure size and create subplots
-        fig, (ax1, ax2) = plt.subplots(
-            1, 2, figsize=(12, 6), sharey=False, sharex=False
-        )
-
-        # Plot F on the left subplot
-        ax1.set_title("$\\tau$-Space")
-        ax1.plot(
-            self.prep.tau,
-            self.prep.modifiedF,
-            label=f"$F(\\tau)$",
-        )
-        ax1.set_xlabel("$\\tau$")
-        ax1.set_ylabel("$F(\\tau)$")
-        ax1.legend()
-        ax1.grid(True)
-
-        # Plot S on the right subplot
-        ax2.set_title("$\\omega$-Space")
-        ax2.plot(
-            self.prep.modifiedOmega,
-            self.prep.modifiedS,
-            label="$S(\\omega)$",
-        )
-        ax2.set_xlabel("$\\omega$")
-        ax2.set_ylabel("$S(\\omega)$")
-        ax2.legend()
-        ax2.grid(True)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Store matplot-plot
-        plt.savefig(os.path.join(self.plots_dir, "prep-data.png"))
-
-    def _plotly_prep_data(self):
-        # Create a Plotly figure
-        fig1 = go.Figure()
-        fig2 = go.Figure()
-        # Plot F on the left subplot
-        fig1.add_trace(
-            go.Scatter(
-                x=self.prep.tau,
-                y=self.prep.modifiedF,
-                mode="lines",
-                name=f"F(τ)",
-            )
-        )
-        # Plot S on the right subplot
-        fig2.add_trace(
-            go.Scatter(
-                x=self.prep.modifiedOmega,
-                y=self.prep.modifiedS,
-                mode="lines",
-                name=f"S(ω)",
-            )
-        )
-        # Update layout
-        fig1.update_layout(
-            title="τ-Space",
-            xaxis=dict(title="τ"),
-            yaxis=dict(title="F(τ)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-        fig2.update_layout(
-            title="ω-Space",
-            xaxis=dict(title="ω"),
-            yaxis=dict(title="S(ω)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-        # Store plotly-plots
-        fig1.write_html(os.path.join(self.plots_dir, "prep-data-F.html"))
-        fig2.write_html(os.path.join(self.plots_dir, "prep-data-S.html"))
-
-        return [fig1, fig2]
-
-    def _matplot_prep_forward(self):
-        # Set figure size and create subplots
-        fig, (ax1, ax2) = plt.subplots(
-            1, 2, figsize=(12, 6), sharey=False, sharex=False
-        )
-
-        # Plot forward S on the left subplot
-        ax1.set_title("$\\tau$-Space")
-        ax1.plot(
-            self.prep.tau,
-            self.prep.forwardModifiedS,
-            label="$L[S](\\tau)$",
-        )
-        ax1.plot(
-            self.prep.tau,
-            self.prep.modifiedF,
-            label="$F(\\tau)$",
-            color="black",
-            linestyle="--",
-        )
-        ax1.set_xlabel("$\\tau$")
-        ax1.set_ylabel("Laplace Transform")
-        ax1.legend()
-        ax1.grid(True)
-
-        # Plot forward S abs error on the right subplot
-        ax2.set_title("$\\tau$-Space")
-        ax2.plot(
-            self.prep.tau,
-            self.prep.forwardModifiedSAbsError,
-            label="$|L[S](\\tau) - F(\\tau)|$",
-        )
-        ax2.set_xlabel("$\\tau$")
-        ax2.set_ylabel("Absolute Error")
-        ax2.legend()
-        ax2.grid(True)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Store matplot-plot
-        plt.savefig(os.path.join(self.plots_dir, "prep-forward.png"))
-
-    def _plotly_prep_forward(self):
-        # Create a Plotly figure
-        fig1 = go.Figure()
-        fig2 = go.Figure()
-
-        # Plot forward S on the left subplot
-        fig1.add_trace(
-            go.Scatter(
-                x=self.prep.tau,
-                y=self.prep.modifiedF,
-                mode="lines",
-                name=f"F(τ)",
-                line=dict(dash="dash"),
-            )
-        )
-        fig1.add_trace(
-            go.Scatter(
-                x=self.prep.tau,
-                y=self.prep.forwardModifiedS,
-                mode="lines",
-                name=f"L[S](τ)",
-            )
-        )
-
-        # Plot forward S abs error on the right subplot
-        fig2.add_trace(
-            go.Scatter(
-                x=self.prep.tau,
-                y=self.prep.forwardModifiedSAbsError,
-                mode="lines",
-                name="$|L[S](\\tau)-F(\\tau)|$",
-            )
-        )
-        # Update layout
-        fig1.update_layout(
-            title="τ-Space",
-            xaxis=dict(title="τ"),
-            yaxis=dict(title="Laplace Transform"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-        fig2.update_layout(
-            title="ω-Space",
-            xaxis=dict(title="ω"),
-            yaxis=dict(title="Absolute Error"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-        # Store plotly-plots
-        fig1.write_html(os.path.join(self.plots_dir, "prep-forward-S.html"))
-        fig2.write_html(os.path.join(self.plots_dir, "prep-forward-S-abs-error.html"))
-
-        return [fig1, fig2]
-
-    def create_run(self):
-        # print(self.prep)
-        # print(self.config)
-
-        if not self.ready_to_finish:
-            return False
-
-        # Save config to JSON
-        self._check_save_config()
-
-        # Create the content for run.py
-        run_py_content = f"""# This file was automatically generated by pylit.\n# Path: {self.path_run}\n# To run the experiment, execute this file with Python:\n# conda activate pylit\n# python {self.path_run}\n# conda deactivate\n\nfrom pylit.backend.core import Experiment\n\nname="{self.name}"\nworkspace="{self.workspace}"\nexp = Experiment(name, workspace)\nexp.fit_model()\nexp.plot_results()"""
-
-        # Write the content to run.py
-        with open(self.path_run, "w") as file:
-            file.write(run_py_content)
 
         return True
 
-    def fit_model(self):
-        self._init_model(print_name=True)
+    def apply_noise_F(self):
+        # Create Noise
+        if self.config.noiseActive:
+            noiseF = getattr(noise_iid, self.config.noiseName)(
+                *list(self.config.noiseParams.values())
+            )(len(self.prep.F))
+
+            # Convolve Noise
+            if self.config.noiseConvActive:
+                noiseF = getattr(noise_conv, self.config.noiseConvName)(
+                    *list(self.config.noiseConvParams.values())
+                )(noiseF)
+            self.prep.noiseF = noiseF
+
+        # Save to JSON
+        save_to_json(self.prep, self.prep_path)
+
+    def reset_noise_F(self):
+        # Reset noiseF
+        self.prep.noiseF = []
+        # Save to JSON
+        save_to_json(self.prep, self.prep_path)
+
+    def fit_model(self, time_scaling=True, normalization=True):
+        self._init_model(print_name=True, time_scaling=time_scaling)
         self._init_method()
-        self._optimize()
+        self._optimize(normalization=normalization)
         self._evaluate()
 
-    def _init_model(self, print_name=False):
+    def _init_model(self, print_name: bool, time_scaling: bool):
         modelName = self.config.modelName
         if print_name:
-            print("Model Name: ", modelName)
+            print("\nModel Name: ", modelName)
         modelParams = self.config.modelParams
+        if "tau" in modelParams:
+            del modelParams["tau"]  # TODO solve differently!
         model_class = getattr(models, modelName)
-        model = model_class(**modelParams)
-        model.grid_points = self.prep.tau
-        model = getattr(models.scaling, self.config.scalingName)(
-            lrm=model, **self.config.scalingParams
-        )
+        model = model_class(self.prep.tau, **modelParams)
+        if time_scaling:
+            model = models.linear_scaling(lrm=model)
+        # TODO Add detailed balance decorator
+        model = models.detailed_balance(lrm=model)
+        model.compute_regression_matrix()
         self.model = model
 
     def _init_method(self):
         methodName = self.config.methodName
+        if methodName == "":
+            raise ValueError("Method Name is not set.")
         print("Method Name: ", methodName)
         methodParams = self.config.methodParams
+
+        # Add Evaluation Matrix : it is not stored in the config!
+        if "E" in methodParams:
+            methodParams["E"] = self.model(self.prep.omega, matrix=True)
+        # Add Model Matrix
+        if "D" in self.config.methodParams:
+            # Automatically scale by trapezodial rule
+            D = self.prep.D
+            D_trapz = np.trapz(np.abs(D), self.prep.omega)
+            D = D / D_trapz if D_trapz != 0.0 else D
+            methodParams["D"] = D
+        # Add omegas
+        if "omegas" in self.config.methodParams:
+            methodParams["omegas"] = self.prep.omega
+
         method_func = getattr(methods, methodName)
         method_func_params = extract_params(method_func).keys()
         methodParams = {
@@ -546,7 +401,8 @@ class Experiment:
             for key, value in methodParams.items()
             if key in method_func_params
         }
-        self.config.methodParams = methodParams  # NOTE Update methodParams
+        # Update methodParams
+        self.config.methodParams = methodParams
         lambd = methodParams["lambd"]
         if isinstance(lambd, float) or isinstance(lambd, int):
             lambd = np.array([lambd], dtype=FLOAT_DTYPE)
@@ -561,69 +417,81 @@ class Experiment:
             method.append(method_func(**params_item))  # append method with lambd=item
         self.method = method
 
-    def _optimize(self):
+    def _optimize(self, normalization: bool):
         optimName = self.config.optimName
         print("Optimization Name: ", optimName)
         if not isinstance(self.method, list):
             raise ValueError("Method must be given as a list.")
         solutions = []
         optimize_func = getattr(optimize, optimName)
-        for i, item in enumerate(self.method):
-            x0 = self.model.coeffs  # Is zero defaulted to zero!
-            R = self.model.regression_matrix
-            F = self.prep.modifiedF
-            m = R.shape[1]
-            if (
-                not self.config.x0Reset
-                and self.output is not None
-                and self.output.coefficients is not None
-                and len(self.output.coefficients[i]) == m # NOTE else the model parameters have changed!
-            ):
-                x0 = self.output.coefficients[i]
+        noise_F = self.prep.noiseF
+        if self.prep.noiseF is None or len(self.prep.noiseF) == 0:
+            noise_F = [0]
 
-            maxiter = self.config.optimParams["maxiter"]
-            tol = self.config.optimParams["tol"]
-            protocol = self.config.optimParams["protocol"]
-            svd = self.config.optimParams["svd"]
+        for noise in noise_F:
+            for i, method in enumerate(self.method):
+                x0 = 0.0 * self.model.coeffs  # Is defaulted to zero!
+                R = self.model.regression_matrix
+                F = self.prep.F + noise
+                # Automatically scale by max F
+                F_max = np.max(F)
+                F = F / F_max if F_max != 0.0 else F
+                m = R.shape[1]
+                if (
+                    not self.config.x0Reset
+                    and self.output is not None
+                    and self.output.coefficients is not None
+                    and len(self.output.coefficients[i])
+                    == m  # NOTE else the model parameters have changed!
+                ):
+                    x0 = self.output.coefficients[i]
 
-            if self.config.adaptiveActive:
+                maxiter = self.config.optimParams["maxiter"]
+                tol = self.config.optimParams["tol"]
+                protocol = self.config.optimParams["protocol"]
+                svd = self.config.optimParams["svd"]
 
-                def optim_RFx0(R, F, x0):
-                    return optimize_func(
+                if self.config.adaptiveActive:
+
+                    def optim_RFx0(R, F, x0):
+                        return optimize_func(
+                            R=R,
+                            F=F,
+                            x0=x0,
+                            method=method,
+                            maxiter=maxiter,
+                            tol=tol,
+                            protocol=protocol,
+                            svd=svd,
+                        )
+
+                    steps = len(self.model.params[0])
+                    solution = optimize.adaptive_RF(
                         R=R,
                         F=F,
                         x0=x0,
-                        method=item,
+                        steps=steps,
+                        optim_RFx0=optim_RFx0,
+                        residuum_mode=self.config.adaptiveResiduumMode,
+                    )
+
+                    solutions.append(solution)
+                else:
+                    solution = optimize_func(
+                        R=R,
+                        F=F,
+                        x0=x0,
+                        method=method,
                         maxiter=maxiter,
                         tol=tol,
                         protocol=protocol,
                         svd=svd,
                     )
 
-                steps = len(self.model.params[0])
-                solution = optimize.adaptive_RF(
-                    R=R,
-                    F=F,
-                    x0=x0,
-                    steps=steps,
-                    optim_RFx0=optim_RFx0,
-                    residuum_mode=self.config.adaptiveResiduumMode,
-                )
+                    solutions.append(solution)
 
-                solutions.append(solution)
-            else:
-                solution = optimize_func(
-                    R=R,
-                    F=F,
-                    x0=x0,
-                    method=item,
-                    maxiter=maxiter,
-                    tol=tol,
-                    protocol=protocol,
-                    svd=svd,
-                )
-
-                solutions.append(solution)
+                # Rescale coefficients by F_max
+                solutions[-1].x *= F_max
 
         if self.output is None:
             self.output = Output()
@@ -641,479 +509,52 @@ class Experiment:
         save_to_json(self.output, self.output_path)
 
     def _evaluate(self):
-
-        valsF, valsS, integral = [], [], []
-
-        for i, coeffs in enumerate(self.output.coefficients):
+        forward_S, S = [], []
+        for coeffs in self.output.coefficients:
+            # Set the correct coefficients
             self.model.coeffs = coeffs
-            valsF.append(self.model.forward())
-            valsS.append(self.model(self.prep.modifiedOmega))
-            integral = np.append(integral, np.trapz(valsS[i], self.prep.modifiedOmega))
+            # Compute Forward S and S
+            forward_S.append(self.model.forward())
+            S.append(self.model(self.prep.omega))
 
-        self.output.valsF = valsF
-        self.output.valsS = valsS
-        self.output.integral = integral
+        # S:
+        self.output.S = S
+        self.output.expS, self.output.stdS = np.array(
+            [
+                exp_std(
+                    self.prep.omega,
+                    S_i,
+                )
+                for S_i in S
+            ],
+            dtype=FLOAT_DTYPE,
+        ).T
+        self.output.freqMomentsS = np.array(
+            [
+                moments(
+                    self.prep.omega,
+                    S_i,
+                    MOMENT_ORDERS,
+                )
+                for S_i in S
+            ],
+            dtype=FLOAT_DTYPE,
+        )
 
-        # Checkpoint: Store output to JSON
+        # L(S)[τ]:
+        self.output.forwardS = forward_S
+        # TODO
+        self.output.forwardSAbsError = np.array(
+            [np.abs(forward_S_i - self.prep.F) for forward_S_i in forward_S],
+            dtype=FLOAT_DTYPE,
+        )
+        self.output.forwardSMaxError = np.amax(self.output.forwardSAbsError, axis=0)
+
+        # Store S, L(S) to CSV
+        S_df = pd.DataFrame([self.prep.omega, *self.output.S]).T
+        S_df.to_csv(self.path_S, index=False, header=False)
+        L_S_df = pd.DataFrame([self.prep.tau, *self.output.forwardS]).T
+        L_S_df.to_csv(self.path_L_S, index=False, header=False)
+
+        # Store output to JSON
         save_to_json(self.output, self.output_path)
-
-    def plot_results(self):
-        if self.config.plot_coeffs:
-            self.plot_coeffs()
-        if self.config.plot_model:
-            self.plot_model()
-        if self.config.plot_error_forward_model:
-            self.plot_forward_model()
-        if self.config.plot_error_model:
-            self.plot_error_model()
-        if self.config.plot_error_forward_model:
-            self.plot_error_forward_model()
-
-    def plot_coeffs(self):
-        self._matplot_coeffs()
-        return self._plotly_coeffs()
-
-    def _matplot_coeffs(self):
-        # Create a new figure and axis
-        fig, ax = plt.subplots()
-
-        # Display the coefficients array as an image
-        cax = ax.imshow(self.output.coefficients, aspect="auto", cmap="viridis")
-
-        # Add a color bar
-        fig.colorbar(cax)
-
-        # Add labels and title
-        ax.set_title("Coefficients")
-        ax.set_xlabel("Coefficient Index")
-        ax.set_ylabel("Sample Index")
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Store matplot-plot
-        plt.savefig(os.path.join(self.plots_dir, "res-coefficients.png"))
-
-    def _plotly_coeffs(self):
-        # Create a heatmap
-        heatmap = go.Heatmap(z=self.output.coefficients, colorscale="Viridis")
-
-        # Create a plotly figure
-        fig = go.Figure(data=[heatmap])
-
-        # Add labels and title
-        fig.update_layout(
-            title="Coefficients",
-            xaxis_title="Coefficient Index",
-            yaxis_title="Sample Index",
-        )
-
-        # Save the plot as an HTML file
-        fig.write_html(os.path.join(self.plots_dir, "res-coefficients.html"))
-
-        return [fig]
-
-    def plot_model(self):
-        self._matplot_model()
-        return self._plotly_model()
-
-    def _matplot_model(self):
-        x_omega = self.prep.modifiedOmega
-        modifiedS = self.prep.modifiedS
-        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
-        max_vals = np.max(valsS, axis=0)
-        min_vals = np.min(valsS, axis=0)
-        avg_vals = np.mean(valsS, axis=0)
-
-        # Create a Matplotlib figure and axis
-        fig, ax = plt.subplots()
-
-        # Plot S
-        ax.plot(x_omega, modifiedS, label="S(ω)", color="blue")
-
-        # Plot Models
-        ax.plot(x_omega, min_vals, label="Sₗ(ω)", color="green")
-        ax.plot(x_omega, max_vals, label="Sᵤ(ω)", color="green")
-        ax.plot(x_omega, avg_vals, label="Sₐ(ω)", color="green")
-
-        # Fill between min and max values
-        ax.fill_between(x_omega, min_vals, max_vals, color="green", alpha=0.3)
-
-        # Add title and labels
-        ax.set_title("ω-Space")
-        ax.set_xlabel("ω")
-        ax.set_ylabel("S(ω)")
-
-        # Add legend
-        ax.legend(loc="upper right")
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Save the plot as an image file
-        plt.savefig(os.path.join(self.plots_dir, "res-model.png"))
-
-    def _plotly_model(self):
-        x_omega = self.prep.modifiedOmega
-        modifiedS = self.prep.modifiedS
-        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
-        max_vals = np.max(valsS, axis=0)
-        min_vals = np.min(valsS, axis=0)
-        avg_vals = np.mean(valsS, axis=0)
-
-        # Create a plotly figure
-        fig = go.Figure()
-
-        # Plot S
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=modifiedS,
-                mode="lines",
-                name=f"S(ω)",
-            )
-        )
-
-        # Plot Models
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=min_vals,
-                mode="lines",
-                name=f"Sₗ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=max_vals,
-                fill="tonexty",
-                mode="lines",
-                name=f"Sᵤ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=avg_vals,
-                mode="lines",
-                name=f"Sₐ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.update_layout(
-            title="ω-Space",
-            xaxis=dict(title="ω"),
-            yaxis=dict(title="S(ω)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-
-        fig.write_html(os.path.join(self.plots_dir, "res-model.html"))
-
-        return [fig]
-
-    def plot_forward_model(self):
-        self._matplot_forward_model()
-        return self._plotly_forward_model()
-
-    def _matplot_forward_model(self):
-        x_omega = self.prep.tau
-        modifiedF = self.prep.modifiedF
-        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
-        max_vals = np.max(valsF, axis=0)
-        min_vals = np.min(valsF, axis=0)
-        avg_vals = np.mean(valsF, axis=0)
-
-        # Create a Matplotlib figure and axis
-        fig, ax = plt.subplots()
-
-        # Plot F
-        ax.plot(x_omega, modifiedF, label="F(τ)", color="blue")
-
-        # Plot Forward Models
-        ax.plot(x_omega, min_vals, label="Fₗ(τ)", color="green")
-        ax.plot(x_omega, max_vals, label="Fᵤ(τ)", color="green")
-        ax.plot(x_omega, avg_vals, label="Fₐ(τ)", color="green")
-
-        # Fill between min and max values
-        ax.fill_between(x_omega, min_vals, max_vals, color="green", alpha=0.3)
-
-        # Add title and labels
-        ax.set_title("τ-Space")
-        ax.set_xlabel("τ")
-        ax.set_ylabel("F(τ)")
-
-        # Add legend
-        ax.legend(loc="upper right")
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Save the plot as an image file
-        plt.savefig(os.path.join(self.plots_dir, "res-forward-model.png"))
-
-    def _plotly_forward_model(self):
-        x_omega = self.prep.tau
-        modifiedF = self.prep.modifiedF
-        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
-        max_vals = np.max(valsF, axis=0)
-        min_vals = np.min(valsF, axis=0)
-        avg_vals = np.mean(valsF, axis=0)
-
-        # Create a plotly figure
-        fig = go.Figure()
-
-        # Plot F
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=modifiedF,
-                mode="lines",
-                name=f"F(τ)",
-            )
-        )
-
-        # Plot Forward Models
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=min_vals,
-                mode="lines",
-                name=f"Fₗ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=max_vals,
-                fill="tonexty",
-                mode="lines",
-                name=f"Fᵤ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=avg_vals,
-                mode="lines",
-                name=f"Fₐ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.update_layout(
-            title="τ-Space",
-            xaxis=dict(title="τ"),
-            yaxis=dict(title="F(τ)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-
-        fig.write_html(os.path.join(self.plots_dir, "res-forward-model.html"))
-
-        return [fig]
-
-    def plot_error_model(self):
-        self._matplot_error_model()
-        return self._plotly_error_model()
-
-    def _matplot_error_model(self):
-        x_omega = self.prep.modifiedOmega
-        modifiedS = self.prep.modifiedS
-        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
-        eps = np.array([np.abs(vals - modifiedS) for vals in valsS])
-        max_eps = np.max(eps, axis=0)
-        min_eps = np.min(eps, axis=0)
-        avg_eps = np.mean(eps, axis=0)
-
-        # Create a Matplotlib figure and axis
-        fig, ax = plt.subplots()
-
-        # Plot Models
-        ax.plot(x_omega, min_eps, label="εₗ(ω)", color="green")
-        ax.plot(x_omega, max_eps, label="εᵤ(ω)", color="green")
-        ax.plot(x_omega, avg_eps, label="εₐ(ω)", color="green")
-
-        # Fill between min and max values
-        ax.fill_between(x_omega, min_eps, max_eps, color="green", alpha=0.3)
-
-        # Add title and labels
-        ax.set_title("ω-Space")
-        ax.set_xlabel("ω")
-        ax.set_ylabel("ε(ω)")
-
-        # Add legend
-        ax.legend(loc="upper right")
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Save the plot as an image file
-        plt.savefig(os.path.join(self.plots_dir, "res-model-error.png"))
-
-    def _plotly_error_model(self):
-        x_omega = self.prep.modifiedOmega
-        modifiedS = self.prep.modifiedS
-        valsS = np.array(self.output.valsS, dtype=FLOAT_DTYPE)
-        eps = np.array([np.abs(vals - modifiedS) for vals in valsS])
-        max_eps = np.max(eps, axis=0)
-        min_eps = np.min(eps, axis=0)
-        avg_eps = np.mean(eps, axis=0)
-
-        # Create a plotly figure
-        fig = go.Figure()
-
-        # Plot Models Error
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=min_eps,
-                mode="lines",
-                name=f"εₗ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=max_eps,
-                fill="tonexty",
-                mode="lines",
-                name=f"εᵤ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=avg_eps,
-                mode="lines",
-                name=f"εₐ(ω)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.update_layout(
-            title="ω-Space",
-            xaxis=dict(title="ω"),
-            yaxis=dict(title="ε(ω)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-
-        fig.write_html(os.path.join(self.plots_dir, "res-model-error.html"))
-
-        return [fig]
-
-    def plot_error_forward_model(self):
-        self._matplot_error_forward_model()
-        return self._plotly_error_forward_model()
-
-    def _matplot_error_forward_model(self):
-        x_omega = self.prep.tau
-        modifiedF = self.prep.modifiedF
-        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
-        eps = np.array([np.abs(vals - modifiedF) for vals in valsF])
-        max_eps = np.max(eps, axis=0)
-        min_eps = np.min(eps, axis=0)
-        avg_eps = np.mean(eps, axis=0)
-
-        # Create a Matplotlib figure and axis
-        fig, ax = plt.subplots()
-
-        # Plot Models
-        ax.plot(x_omega, min_eps, label="εₗ(τ)", color="green")
-        ax.plot(x_omega, max_eps, label="εᵤ(τ)", color="green")
-        ax.plot(x_omega, avg_eps, label="εₐ(τ)", color="green")
-
-        # Fill between min and max values
-        ax.fill_between(x_omega, min_eps, max_eps, color="green", alpha=0.3)
-
-        # Add title and labels
-        ax.set_title("τ-Space")
-        ax.set_xlabel("τ")
-        ax.set_ylabel("ε(τ)")
-
-        # Add legend
-        ax.legend(loc="upper right")
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Save the plot as an image file
-        plt.savefig(os.path.join(self.plots_dir, "res-forward-model-error.png"))
-
-    def _plotly_error_forward_model(self):
-        x_omega = self.prep.tau
-        modifiedF = self.prep.modifiedF
-        valsF = np.array(self.output.valsF, dtype=FLOAT_DTYPE)
-        eps = np.array([np.abs(vals - modifiedF) for vals in valsF])
-        max_eps = np.max(eps, axis=0)
-        min_eps = np.min(eps, axis=0)
-        avg_eps = np.mean(eps, axis=0)
-
-        # Create a Plotly figure
-        fig = go.Figure()
-
-        # Plot Forward Models Error
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=min_eps,
-                mode="lines",
-                name=f"εₗ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=max_eps,
-                fill="tonexty",
-                mode="lines",
-                name=f"εᵤ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_omega,
-                y=avg_eps,
-                mode="lines",
-                name=f"εₐ(τ)",
-                line=dict(color=MODERN_GREEN),
-            )
-        )
-
-        fig.update_layout(
-            title="τ-Space",
-            xaxis=dict(title="τ"),
-            yaxis=dict(title="ε(τ)"),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-        )
-
-        fig.write_html(os.path.join(self.plots_dir, "res-forward-model-error.html"))
-
-        return [fig]

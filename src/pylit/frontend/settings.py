@@ -6,10 +6,10 @@ from pylit.global_settings import ARRAY
 
 MODELS = Options(
     [
-        Option(ref="GaussRLRM", name="Linear Gaussian Regression"),
-        Option(ref="LaplaceRLRM", name="Linear Laplace Regression"),
-        # Option(ref="LogisticRLRM", name="Linear Logistic Regression"), # TODO fix some issue...
-        # Option(ref="CauchyRLRM", name="Linear Cauchy Regression"), # TODO fix some issue...
+        Option(ref="GaussLRM", name="Linear Gaussian Regression"),
+        Option(ref="LaplaceLRM", name="Linear Laplace Regression"),
+        Option(ref="CauchyLRM", name="Linear Cauchy Regression"),
+        Option(ref="UniformLRM", name="Linear Uniform Regression"),
     ]
 )
 
@@ -18,32 +18,33 @@ def MODEL_PARAM_MAP(exp: Experiment) -> ParamMap:
     return ParamMap(
         [
             Param(
-                name="omegas",
+                name="mu",
+                label="Mu",
                 my_type=ARRAY,
                 lower_value=np.round(
-                    exp.prep.modifiedOmegaMin,
+                    exp.prep.omegaMin,
                     2,
                 ),
-                upper_value=np.round(exp.prep.modifiedOmegaMax, 2),
-                num_value=int(len(exp.prep.modifiedOmega) / 20),
+                upper_value=np.round(exp.prep.omegaMax, 2),
+                num_value=int(len(exp.prep.omega) / 20),
             ),
             Param(
-                name="sigmas",
+                name="sigma",
+                label="Sigma",
                 my_type=ARRAY,
-                lower_value=np.round(exp.prep.stdS, 2),
-                upper_value=np.round(10 * exp.prep.stdS, 2),
-                num_value=int(1 / exp.prep.stdS),
+                lower_value=np.round(exp.prep.stdD, 2),
+                upper_value=np.round(10 * exp.prep.stdD, 2),
+                num_value=int(1 / exp.prep.stdD),
             ),
             Param(
                 name="beta",
+                label="Beta",
                 default=1.0,
                 my_type=FLOAT_DTYPE,
                 ignore=True,
             ),
             Param(
-                name="order",
-                default="0,1",
-                my_type=str,
+                name="tau",
                 ignore=True,
             ),
         ]
@@ -60,10 +61,10 @@ OPTIMIZER = Options(
             ref="nn_adam",
             name="Non Negative ADAM",
         ),
-        # Option(
-        #     ref="nn_bro",
-        #     name="Non Negative Bro",
-        # ),
+        Option(
+            ref="nn_bro",
+            name="Non Negative Bro",
+        ),
     ]
 )
 
@@ -81,6 +82,20 @@ OPTIM_PARAM_MAP = ParamMap(
             default=TOL,
             my_type=FLOAT_DTYPE,
             step=1e-30,
+        ),
+        Param(
+            name="svd",
+            label="SVD",
+            description="Uses a singular value decomposition for the regression matrix; works only with Lasso and Ridge Regularization.",
+            my_type=bool,
+            default=False,
+        ),
+        Param(
+            name="protocol",
+            label="Print Protocol",
+            description="Prints the protocol of the optimization process.",
+            my_type=bool,
+            default=False,
         ),
         Param(
             name="S",
@@ -111,27 +126,6 @@ OPTIM_PARAM_MAP = ParamMap(
             ignore=True,
             my_type=bool,
             default=True,
-        ),
-    ]
-)
-
-SCALINGS = Options(
-    [
-        Option(
-            ref="linear",
-            name="Linear",
-        ),
-    ]
-)
-
-SCALINGS_PARAM_MAP = ParamMap(
-    [
-        Param(
-            name="right_end_point",
-            ignore=True,
-            label="Right End Point",
-            default=1.0,
-            my_type=FLOAT_DTYPE,
         ),
     ]
 )
@@ -171,12 +165,17 @@ METHODS = Options(
 
 
 def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
-    lambd_default = 1.0 if not exp.prepared else exp.prep.forwardModifiedSMaxError
-    upper_value = 1.0 if not exp.prepared else exp.prep.forwardModifiedSMaxError
+    lambd_default = (
+        1.0 if not exp.imported else FLOAT_DTYPE(f"{exp.prep.forwardDMaxError:.1e}")
+    )
+    upper_value = (
+        1.0 if not exp.imported else FLOAT_DTYPE(f"{exp.prep.forwardDMaxError:.1e}")
+    )
     return ParamMap(
         [
             Param(
                 name="lambd",
+                label="Regularization (&nbsp;λ&nbsp;)",
                 my_type=FLOAT_DTYPE,
                 default=lambd_default,
                 variation=True,
@@ -189,10 +188,10 @@ def METHODS_PARAM_MAP(exp: Experiment) -> ParamMap:
                 ignore=True,
                 # my_type=ARRAY,
                 my_type=bool,
-                default=True
+                default=True,
             ),
             Param(
-                name="S",
+                name="D",
                 ignore=True,
                 # my_type=ARRAY,
                 my_type=bool,
@@ -234,39 +233,57 @@ NOISES_IID_PARAM_MAP = ParamMap(
     [
         Param(
             name="mean",
+            label="Mean",
             my_type=FLOAT_DTYPE,
             default=0.0,
             step=0.1,
         ),
         Param(
             name="std",
+            label="Standard Deviation",
             my_type=FLOAT_DTYPE,
             default=0.01,
             step=0.001,
         ),
         Param(
             name="low",
+            label="Low",
             my_type=FLOAT_DTYPE,
             default=-0.1,
             step=0.01,
         ),
         Param(
             name="high",
+            label="High",
             my_type=FLOAT_DTYPE,
             default=0.1,
             step=0.01,
         ),
         Param(
             name="prob",
+            label="Probability",
             my_type=FLOAT_DTYPE,
             default=0.5,
             step=0.01,
         ),
         Param(
             name="lam",
+            label="Lambda",
             my_type=FLOAT_DTYPE,
             default=0.1,
             step=0.01,
+        ),
+        Param(
+            name="sample_size",
+            label="Sample Size",
+            my_type=INT_DTYPE,
+            default=True,
+        ),
+        Param(
+            name="symmetric",
+            label="Symmetric",
+            my_type=bool,
+            default=False,
         ),
     ]
 )
@@ -288,12 +305,14 @@ NOISES_CONV_PARAM_MAP = ParamMap(
     [
         Param(
             name="prob",
+            label="Probability",
             my_type=FLOAT_DTYPE,
             default=0.5,
             step=0.01,
         ),
         Param(
             name="window",
+            label="Window",
             my_type=INT_DTYPE,
             default=5,
             step=1,

@@ -1,7 +1,9 @@
 import numpy as np
 from numba import njit
+
 # from IPython.display import display, Math
 from typing import Tuple, List
+
 # from pylit.backend.models.ABC import LinearRegressionModelABC
 from pylit.global_settings import ARRAY, FLOAT_DTYPE, INT_DTYPE
 
@@ -103,13 +105,6 @@ def to_string(obj):
     return mystr
 
 
-def to_dict(obj, cls_name=True):
-    mydict = vars(obj)
-    if cls_name:
-        mydict["class_name"] = obj.__class__.__name__
-    return mydict
-
-
 def svd(M: ARRAY) -> Tuple[ARRAY, ARRAY, ARRAY]:
     U, s, Vt = np.linalg.svd(M)
     V = Vt.T
@@ -129,6 +124,7 @@ def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, calla
         return tau0 + tau * (tau1 - tau0)
 
     return psy, psy_inv
+
 
 # TODO deprecated
 # def lrm_analysis(model: LinearRegressionModelABC, invertible: bool = False):
@@ -390,6 +386,7 @@ def trapz_mat(x: ARRAY):
     np.fill_diagonal(trapz_mat[:, 1:], dx)
 
     return trapz_mat
+
 
 @njit
 def svd_optim(R: ARRAY, F: ARRAY, x0: ARRAY):

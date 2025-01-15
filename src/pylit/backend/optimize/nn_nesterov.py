@@ -1,7 +1,8 @@
 import numpy as np
 import numba as nb
-from pylit.backend.core import Solution
+
 from pylit.backend.utils import svd_optim
+from pylit.backend.core import Method, Solution
 from pylit.global_settings import FLOAT_DTYPE, INT_DTYPE, ARRAY, TOL
 
 
@@ -9,11 +10,11 @@ def nn_nesterov(
     R: ARRAY,
     F: ARRAY,
     x0: ARRAY,
-    method: callable,
+    method: Method,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
-    protocol: bool = False,
     svd: bool = False,
+    protocol: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the Nesterov's accelerated gradient method.
 
@@ -47,7 +48,7 @@ def nn_nesterov(
 
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
-    tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
+    tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)  # TODO check this
 
     # Call subroutine
     x = _nn_nesterov_subroutine(
@@ -88,6 +89,10 @@ def _nn_nesterov_subroutine(
     if svd:
         R, F, x0, V = svd_optim(R, F, x0)
 
+    # Print header for protocol
+    if protocol:
+        print("Step", "Error")
+
     # Subroutine implementation:
     for k in range(maxiter):
         # Update momentum
@@ -112,6 +117,7 @@ def _nn_nesterov_subroutine(
         #  even if the solution is close to the minimum of the objective function.)
         fy1 = f(y, R, F)
         if k > 0 and np.abs(fy - fy1) < tol:
+            print("Converged by tolerance.")
             break
         fy = fy1
 
@@ -123,7 +129,7 @@ def _nn_nesterov_subroutine(
 
         # Print protocol
         if protocol:
-            print("step: " + str(k + 1) + " of " + str(maxiter))
+            print(k + 1, fy1)
 
     return y if V is None else V @ y
 

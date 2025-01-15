@@ -1,7 +1,17 @@
 import numpy as np
 import streamlit as st
-from streamlit_js_eval import streamlit_js_eval
+
+from streamlit import plotly_chart, session_state as state
 from pylit.frontend.utils import settings_manager
+from pylit.backend.core.plot_utils import (
+    plot_default_model,
+    plot_forward_default_model,
+    plot_forward_default_model_error,
+    plot_coeffs,
+    plot_model,
+    plot_forward_model,
+    plot_forward_model_error,
+)
 from pylit.backend import methods, optimize, models
 from pylit.backend.core import (
     noise_conv,
@@ -17,48 +27,74 @@ from pylit.frontend.settings import (
     METHODS_PARAM_MAP,
     OPTIMIZER,
     OPTIM_PARAM_MAP,
-    SCALINGS,
-    SCALINGS_PARAM_MAP,
     MODELS,
     MODEL_PARAM_MAP,
 )
-from pylit.global_settings import ARRAY
-from pylit.frontend.components import ExportDataFiles, NameParams, DisplayFigure
-from pylit.frontend.components import OpenExperiment
-from pylit.frontend.core import Param, ParamMap
+from pylit.frontend.components import (
+    OpenExperiment,
+    ExportDataFiles,
+    NameParams,
+    LatexRow,
+    HR,
+    Label,
+    PlotlyDataSamples,
+    DictionaryTable,
+)
+
+from pylit.global_settings import MOMENT_ORDERS, COLOR_F
 
 
 def main():
+
+    def init_experiment(name: str):
+        state.exp = Experiment(
+            workspace=state.workspace_as,
+            name=name,
+        )
+
+    # Menu button ids
+    experiment_go_back_button_id = "experiment_go_back_button"
+    experiment_refresh_button_id = "experiment_refresh_button"
+
+    # Menu button click events (must be here to trigger state updates)
+    if experiment_go_back_button_id in state and state[experiment_go_back_button_id]:
+        state.clear()
+
+    if experiment_refresh_button_id in state and state[experiment_refresh_button_id]:
+        name = state.exp.name
+        state.clear()
+        settings_manager()
+        init_experiment(name)
+        # st.rerun()
+
     settings_manager()
 
     st.set_page_config(
         page_title="Experiment",
         page_icon="🚀",
-        layout="wide" if st.session_state["wide_mode"] else "centered",
+        layout="wide" if state["wide_mode_as"] else "centered",
     )
 
-    if "exp" not in st.session_state:
-        st.session_state["exp"] = None
-    if "preprocessed" not in st.session_state:
-        st.session_state["preprocessed"] = False
+    if "exp" not in state:
+        state.exp = None
 
-    def init_experiment(name: str):
-        st.session_state["exp"] = Experiment(
-            workspace=st.session_state["workspace"],
-            name=name,
-            make=True,
-        )
-
-    # Assign st.session_state["exp"] to a local variable for easy access
-    if not st.session_state["exp"] or st.session_state["exp"] is None:
+    # Assign state["exp"] to a local variable for easy access
+    if state.exp is None:
 
         def on_change_name():
             init_experiment(
-                name=st.session_state["experiment_name"],
+                name=state.experiment_name,
             )
 
+        # Add custom CSS to reduce margin
+        Label(
+            text="New Experiment",
+            mb=15,
+        )
+
         st.text_input(
-            "Experiment Name",
+            label="Experiment Name",
+            label_visibility="collapsed",
             placeholder="Enter a name for the experiment.",
             key="experiment_name",
             on_change=on_change_name,
@@ -68,7 +104,7 @@ def main():
 
         name = OpenExperiment(
             my_id="open_experiment",
-            workspace=st.session_state["workspace"],
+            workspace=state.workspace_as,
         )
         if name is not None:
             init_experiment(name)
@@ -77,131 +113,157 @@ def main():
         # as soon as a name is clicked and it is a valid experiment, give back the name of the experiment -> new component!
 
     else:
-        exp = st.session_state["exp"]
 
-        if not isinstance(exp, Experiment):
+        if not isinstance(state.exp, Experiment):
             st.error("Experiment object is not of type Experiment.")
             return
 
-        col1, col2, col3 = st.columns([95, 5, 5])
+        col = st.columns([10, 60, 10, 10, 10], vertical_alignment="center")
 
-        with col1:
-            st.write(
-                f"""#### Name: {exp.name}""",
+        with col[0]:
+            st.button(
+                label="↩",
+                key=experiment_go_back_button_id,
+                use_container_width=True,
+            )
+
+        with col[1]:
+            st.markdown(
+                f"""
+                    <div style='text-align:center;font-size:14pt;'>
+                        <strong>{state.exp.name}</strong>
+                    </div>
+                """,
                 unsafe_allow_html=True,
             )
-        with col2:
-            if st.button("🔄"):
-                name = exp.name
-                st.session_state["exp"] = None
-                init_experiment(name)
-                st.rerun()
-        with col3:
-            if st.button("❌"):
-                # Page reload TODO: solve this in a better way
-                streamlit_js_eval(js_expressions="parent.window.location.reload()")
+
+        with col[2]:
+            st.button(
+                label="🔄",
+                key=experiment_refresh_button_id,
+                use_container_width=True,
+            )
+
+        with col[3]:
+            if st.button(
+                label="💾",
+                use_container_width=True,
+            ):
+                state.exp.create_run_py(
+                    coefficients=state.coefficients_as,
+                    model=state.model_as,
+                    forward_model=state.forward_model_as,
+                    forward_model_error=state.forward_model_error_as,
+                )
+                state.exp.save_config()
+                st.toast(
+                    "Saved configuration successfully.",
+                    icon="✅",
+                )
+
+        with col[4]:
+            if st.button(
+                label="🚀",
+                use_container_width=True,
+            ):
+                state.exp.create_run_py(
+                    coefficients=state.coefficients_as,
+                    model=state.model_as,
+                    forward_model=state.forward_model_as,
+                    forward_model_error=state.forward_model_error_as,
+                )
+                state.exp.save_config()
+                st.toast(
+                    "Saved configuration automatically.",
+                    icon="✅",
+                )
+                state.exp.fit_model()
 
         st.write(
-            "<hr style='margin:0;padding:0;padding-top:0px;'/>",
+            "<div style='margin-bottom:50px;'></div>",
             unsafe_allow_html=True,
         )
 
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+        tab = st.tabs(
             [
-                "🛢️ Export F",
-                "🛢️ Export S",
-                "🎛️ &nbsp; Data Adjustments",
-                "🎛️ &nbsp; Model, Optimizer and Method",
-                "📊 &nbsp; Output",
-                "📄 &nbsp; Summary",
-                "📝 &nbsp; Results",
-            ]
+                "Data F",
+                "Data D",
+                "Noise F",
+                "Description",
+                "Model",
+                "Method",
+                "Optimizer",
+                "Result",
+            ],
         )
 
-        st.markdown(
-            "<hr style='margin:0;padding:0;padding-top:5px;'/><br/>",
-            unsafe_allow_html=True,
-        )
+        css = """
+        <style>
+            .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size:14pt;
+            }
+        </style>
+        """
 
-        with tab1:
+        st.markdown(css, unsafe_allow_html=True)
+
+        with tab[0]:
             if ExportDataFiles(
                 my_id="data_csv_column_exporter_F",
-                default_directory=st.session_state["workspace"],
-                export_path=exp.directory + "/F.csv",
+                first_var_label="τ",
+                second_var_label="F(τ)",
+                default_directory=state.workspace_as,
+                export_path=state.exp.path_F,
             ):
-                exp.import_F()
+                # Automatically import the data and prepares it
+                state.exp.import_F()
 
-        with tab2:
-            if ExportDataFiles(
-                my_id="data_csv_column_exporter_S",
-                default_directory=st.session_state["workspace"],
-                export_path=exp.directory + "/S.csv",
-            ):
-                exp.import_S()
-
-        with tab3:
-            st.markdown(
-                "<br/><b>Scale and Adjust</b><hr style='margin:0;padding:0'/>",
-                unsafe_allow_html=True,
-            )
-            if not exp.exported:
+        with tab[1]:
+            if not state.exp.imported_F:
                 st.warning(
-                    "Please export F.csv and S.csv first.",
+                    "Please export F.csv first.",
                     icon="⚠️",
                 )
             else:
-                col1, col2, col3, col4 = st.columns(4)
-
-                with col1:
-                    exp.config.scaleMaxF = st.toggle(
-                        label="Scale F (max-entry)",
-                        value=exp.config.scaleMaxF,
-                        key=f"scale_max_F",
+                if ExportDataFiles(
+                    my_id="data_csv_column_exporter_D",
+                    first_var_label="ω",
+                    second_var_label="D(ω)",
+                    default_directory=state.workspace_as,
+                    export_path=state.exp.path_D,
+                ):
+                    # Automatically import the data and prepares it
+                    state.exp.import_D(
+                        non_negative=state.non_negative_as,
+                        detailed_balance=state.detailed_balance_as,
                     )
 
-                with col2:
-                    exp.config.PosS = st.toggle(
-                        label="Positive Part of S",
-                        value=exp.config.PosS,
-                        key=f"pos_S",
-                    )
-
-                with col3:
-                    exp.config.ExtS = st.toggle(
-                        label="Extend S to negative axis",
-                        value=exp.config.ExtS,
-                        key=f"ext_S",
-                    )
-
-                with col4:
-                    exp.config.trapzS = st.toggle(
-                        label="Scale S (trapezoidal rule)",
-                        value=exp.config.trapzS,
-                        key=f"trapz_S",
-                    )
-
+        with tab[2]:
+            if not state.exp.imported:
+                st.warning(
+                    "Please export F.csv and D.csv first.",
+                    icon="⚠️",
+                )
+            else:
+                # --- Noise --- #
                 col1, col2 = st.columns([1, 1])
-
                 with col1:
-                    exp.config.noiseActive = st.toggle(
+                    state.exp.config.noiseActive = st.toggle(
                         label="Noise",
-                        value=exp.config.noiseActive,
+                        value=state.exp.config.noiseActive,
                         key=f"noise_active",
                     )
 
-                    if exp.config.noiseActive:
-                        noiseName = exp.config.noiseName
+                    if state.exp.config.noiseActive:
+                        noiseName = state.exp.config.noiseName
                         noiseName = "" if noiseName is None else noiseName
-                        noiseParams = exp.config.noiseParams
+                        noiseParams = state.exp.config.noiseParams
                         noiseParams = {} if noiseParams is None else noiseParams
-                        st.markdown(
-                            "<hr style='margin:0;padding:0'/>",
-                            unsafe_allow_html=True,
-                        )
+                        HR()
 
                         (
-                            exp.config.noiseName,
-                            exp.config.noiseParams,
+                            state.exp.config.noiseName,
+                            state.exp.config.noiseParams,
                         ) = NameParams(
                             my_id=f"noise_iid",
                             options=NOISES_IID,
@@ -211,33 +273,30 @@ def main():
                         )
 
                 with col2:
-                    if exp.config.noiseActive:
-                        exp.config.noiseConvActive = (
+                    if state.exp.config.noiseActive:
+                        state.exp.config.noiseConvActive = (
                             st.toggle(
                                 label="Noise Convolution",
-                                value=exp.config.noiseConvActive,
+                                value=state.exp.config.noiseConvActive,
                                 key=f"noise_conv_active",
                             )
-                            and exp.config.noiseActive
+                            and state.exp.config.noiseActive
                         )
 
-                        if exp.config.noiseConvActive:
-                            noiseConvName = exp.config.noiseConvName
+                        if state.exp.config.noiseConvActive:
+                            noiseConvName = state.exp.config.noiseConvName
                             noiseConvName = (
                                 "" if noiseConvName is None else noiseConvName
                             )
-                            noiseConvParams = exp.config.noiseConvParams
+                            noiseConvParams = state.exp.config.noiseConvParams
                             noiseConvParams = (
                                 {} if noiseConvParams is None else noiseConvParams
                             )
-                            st.markdown(
-                                "<hr style='margin:0;padding:0'/>",
-                                unsafe_allow_html=True,
-                            )
+                            HR()
 
                             (
-                                exp.config.noiseConvName,
-                                exp.config.noiseConvParams,
+                                state.exp.config.noiseConvName,
+                                state.exp.config.noiseConvParams,
                             ) = NameParams(
                                 my_id=f"noise_conv",
                                 options=NOISES_CONV,
@@ -248,251 +307,333 @@ def main():
                                 name=noiseConvName,
                             )
 
-                st.markdown("<hr style='margin:0;padding:0'/>", unsafe_allow_html=True)
+                HR()
 
-                if st.button("Prepare data", key="prepro_btn"):
-                    with st.spinner("Preparing data ..."):
-                        exp.prepare()
-                        # st.session_state["preprocessed"] = True
-                st.markdown("<hr style='margin:0;padding:0'/>", unsafe_allow_html=True)
+                cols = st.columns([1, 1, 2])
+                with cols[0]:
+                    if st.button(
+                        label="Apply",
+                        use_container_width=True,
+                        key="apply_noise_button",
+                    ):
+                        state.exp.apply_noise_F()
+                        st.toast(
+                            "Applied Noise successfully to F.",
+                            icon="✅",
+                        )
 
-                if exp.prepared:
-                    st.table(
-                        [
-                            {
-                                "Var": "𝜏",
-                                "Min": exp.prep.tauMin,
-                                "Max": exp.prep.tauMax,
-                            },
-                            {
-                                "Var": "ω",
-                                "Min": exp.prep.modifiedOmegaMin,
-                                "Max": exp.prep.modifiedOmegaMax,
-                            },
-                        ]
-                    )
+                with cols[1]:
+                    if st.button(
+                        label="Reset",
+                        use_container_width=True,
+                        key="reset_noise_button",
+                    ):
+                        state.exp.reset_noise_F()
+                        st.toast(
+                            "Reset Noise successfully from F.",
+                            icon="✅",
+                        )
+                # --- --- --- #
 
-                    st.table(
-                        [
-                            {
-                                "Expected Value S": exp.prep.expS,
-                                "Standard deviation S": exp.prep.stdS,
-                                "Maximal Forward Error S": exp.prep.forwardModifiedSMaxError,
-                            }
-                        ]
-                    )
-
-                    fig_data, fig_forward = exp.plot_prep()
-                    DisplayFigure(fig_data)
-                    DisplayFigure(fig_forward)
-
-        with tab4:
-            if not exp.prepared:
+        with tab[3]:
+            if not state.exp.imported:
                 st.warning(
-                    "Please prepare the data first.",
+                    "Please export F.csv and D.csv first.",
                     icon="⚠️",
                 )
             else:
-                # Create columns
-                col1, col2 = st.columns([1, 1])
+                # --- Description --- #
 
-                # --- Method --- #
-                with col1:
-                    st.markdown(
-                        f"""<br/><b>Method</b><hr style='margin:0;padding:0'/>""",
-                        unsafe_allow_html=True,
+                # Characteristics
+                Label(
+                    text="Characteristics",
+                    mb=-5,
+                )
+                LatexRow(
+                    [
+                        r"\mathbb{E}_D(\omega) \approx "
+                        + str(np.round(state.exp.prep.expD, 2)),
+                        r"\mathbb{V}^2_D(\omega) \approx "
+                        + str(np.round(state.exp.prep.stdD, 2)),
+                        r"\max_\tau \left|\mathcal{L}[D]-F\right| (\tau) \approx "
+                        + f"{state.exp.prep.forwardDMaxError:.2e}",
+                    ]
+                )
+
+                # Frequency Moments
+                HR()
+                Label(
+                    text="Frequency Moments",
+                    mb=10,
+                )
+                DictionaryTable(
+                    {
+                        "α": ["α = " + str(alpha) for alpha in MOMENT_ORDERS],
+                        "⟨ωᵅ⟩": [
+                            f"{moment:.2e}" for moment in state.exp.prep.freqMomentsD
+                        ],
+                    }
+                )
+
+                # Plot Default Model
+                if state.default_model_as:
+                    HR()
+                    Label(
+                        text="Default Model",
+                        mb=-15,
                     )
-                    methodName = exp.config.methodName
-                    methodName = "" if methodName is None else methodName
-                    methodParams = exp.config.methodParams
-                    methodParams = {} if methodParams is None else methodParams
-                    # st.write(methodParams) TODO Remove
-                    (
-                        exp.config.methodName,
-                        exp.config.methodParams,
-                    ) = NameParams(
-                        my_id=f"method",
-                        options=METHODS,
-                        ref=methods,
-                        param_map=METHODS_PARAM_MAP(exp).insert_values(methodParams),
-                        name=methodName,
+                    plotly_chart(
+                        plot_default_model(state.exp),
+                        use_container_width=True,
                     )
+
+                # Plot Forward Default Model
+                if state.forward_default_model_as:
+                    HR()
+                    Label(
+                        text="Forward Default Model",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_forward_default_model(state.exp),
+                        use_container_width=True,
+                    )
+
+                # Plot Forward Default Model Error
+                if state.forward_default_model_error_as:
+                    HR()
+                    Label(
+                        text="Forward Default Model Error",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_forward_default_model_error(state.exp),
+                        use_container_width=True,
+                    )
+
+                # Noise Samples
+                if (
+                    state.noise_samples_as
+                    and state.exp.config.noiseActive
+                    and state.exp.prep.noiseF is not None
+                    and len(state.exp.prep.noiseF) > 0
+                ):
+                    HR()
+                    Label(
+                        text="Noise Samples",
+                        mb=-15,
+                    )
+                    PlotlyDataSamples(state.exp.prep.noiseF, COLOR_F)
+
                 # --- --- --- #
 
-                # --- Optimizer --- #
-                with col2:
-                    st.markdown(
-                        "<br/><b>Optimizer</b><hr style='margin:0;padding:0'/>",
-                        unsafe_allow_html=True,
-                    )
-                    optimName = exp.config.optimName
-                    optimName = "" if optimName is None else optimName
-                    optimParams = exp.config.optimParams
-                    optimParams = {} if optimParams is None else optimParams
-                    (
-                        exp.config.optimName,
-                        exp.config.optimParams,
-                    ) = NameParams(
-                        my_id=f"optim",
-                        options=OPTIMIZER,
-                        ref=optimize,
-                        param_map=OPTIM_PARAM_MAP.insert_values(optimParams),
-                        name=optimName,
-                    )
-                    exp.config.x0Reset = st.toggle(
-                        "Reset x0",
-                        key="x0_reset",
-                        value=exp.config.x0Reset,
-                    )
-                    exp.config.adaptiveActive = st.toggle(
-                        "Adaptive",
-                        key="adaptive_active",
-                        value=exp.config.adaptiveActive,
-                    )
-                    exp.config.adaptiveResiduumMode = st.toggle(
-                        "Residuum Mode",
-                        key="adaptive_residuum_mode",
-                        value=exp.config.adaptiveResiduumMode,
-                    )
-                # --- --- --- #
-
+        with tab[4]:
+            if not state.exp.imported:
+                st.warning(
+                    "Please export F.csv and D.csv first.",
+                    icon="⚠️",
+                )
+            else:
                 # --- Model --- #
-                st.markdown(
-                    f"""<br/><b>Model</b><hr style='margin:0;padding:0'/>""",
-                    unsafe_allow_html=True,
-                )
-                scalingName = exp.config.scalingName
-                scalingName = "" if scalingName is None else scalingName
-                scalingParams = exp.config.scalingParams
-                scalingParams = {} if scalingParams is None else scalingParams
-                (
-                    exp.config.scalingName,
-                    exp.config.scalingParams,
-                ) = NameParams(
-                    my_id=f"scaling",
-                    options=SCALINGS,
-                    ref=models.scaling,
-                    param_map=SCALINGS_PARAM_MAP.insert_values(scalingParams),
-                    label="Scaling",
-                    name=scalingName,
-                )
-
-                modelName = exp.config.modelName
+                modelName = state.exp.config.modelName
                 modelName = "" if modelName is None else modelName
-                modelParams = exp.config.modelParams
+                modelParams = state.exp.config.modelParams
                 modelParams = {} if modelParams is None else modelParams
                 (
-                    exp.config.modelName,
-                    exp.config.modelParams,
+                    state.exp.config.modelName,
+                    state.exp.config.modelParams,
                 ) = NameParams(
                     my_id=f"model",
                     options=MODELS,
                     ref=models,
-                    param_map=MODEL_PARAM_MAP(exp).insert_values(modelParams),
+                    param_map=MODEL_PARAM_MAP(state.exp).insert_values(modelParams),
                     name=modelName,
                 )
 
-        with tab5:
-            if exp.ready_to_finish:
-                st.markdown(
-                    f"""<br/><b>Plotting Options</b><hr style='margin:0;padding:0'/>""",
-                    unsafe_allow_html=True,
-                )
-
-                exp.config.plot_coeffs = st.toggle(
-                    "Model coefficients",
-                    key="plot_coeffs",
-                    value=exp.config.plot_coeffs,
-                )
-
-                exp.config.plot_model = st.toggle(
-                    "Model",
-                    key="plot_model",
-                    value=exp.config.plot_model,
-                )
-
-                exp.config.plot_forward_model = st.toggle(
-                    "Forwarded model",
-                    key="plot_forward_model",
-                    value=exp.config.plot_forward_model,
-                )
-
-                exp.config.plot_error_model = st.toggle(
-                    "Model error",
-                    key="plot_error_model",
-                    value=exp.config.plot_error_model,
-                )
-
-                exp.config.plot_error_forward_model = st.toggle(
-                    "Forwarded model error",
-                    key="plot_error_forward_model",
-                    value=exp.config.plot_error_forward_model,
-                )
-
-                st.write(
-                    "<hr style='margin:0;padding:0;padding-top:5px;'/>",
-                    unsafe_allow_html=True,
-                )
-
-                if st.button("Finish Experiment Setup"):
-                    if exp.create_run():  # TODO create this function
-                        st.success("✅ &nbsp; Experiment setup completed.")
-                    else:
-                        # TODO is this case necessary?
-                        st.warning(
-                            "Some error message.",
-                            icon="⚠️",
-                        )
-            else:
+        with tab[5]:
+            if not state.exp.imported:
                 st.warning(
-                    "Please finish the 'Data Adjustment' and 'Model, Optimizer and Method' steps first.",
+                    "Please export F.csv and D.csv first.",
                     icon="⚠️",
                 )
+            else:
+                # --- Method --- #
+                methodName = state.exp.config.methodName
+                methodName = "" if methodName is None else methodName
+                methodParams = state.exp.config.methodParams
+                methodParams = {} if methodParams is None else methodParams
+                (
+                    state.exp.config.methodName,
+                    state.exp.config.methodParams,
+                ) = NameParams(
+                    my_id=f"method",
+                    options=METHODS,
+                    ref=methods,
+                    param_map=METHODS_PARAM_MAP(state.exp).insert_values(methodParams),
+                    name=methodName,
+                )
+                # --- --- --- #
 
-        with tab6:
-            st.write(exp.config)
-            st.write(exp.prep)
+        with tab[6]:
+            if not state.exp.imported:
+                st.warning(
+                    "Please export F.csv and D.csv first.",
+                    icon="⚠️",
+                )
+            else:
+                # --- Optimizer --- #
+                optimName = state.exp.config.optimName
+                optimName = "" if optimName is None else optimName
+                optimParams = state.exp.config.optimParams
+                optimParams = {} if optimParams is None else optimParams
+                (
+                    state.exp.config.optimName,
+                    state.exp.config.optimParams,
+                ) = NameParams(
+                    my_id=f"optim",
+                    options=OPTIMIZER,
+                    ref=optimize,
+                    param_map=OPTIM_PARAM_MAP.insert_values(optimParams),
+                    name=optimName,
+                )
 
-        with tab7:
-            displayed_any = False
-            if exp.output is not None:
-                # TODO add these checks also in the experiment class methods!
-                if exp.output.coefficients is not None and exp.config.plot_coeffs:
-                    DisplayFigure(exp.plot_coeffs())
-                    displayed_any = True
-                if (
-                    exp.prep.modifiedS is not None
-                    and exp.output.valsS is not None
-                    and exp.config.plot_model
-                ):
-                    DisplayFigure(exp.plot_model())
-                    displayed_any = True
-                if (
-                    exp.prep.modifiedF is not None
-                    and exp.output.valsF is not None
-                    and exp.config.plot_forward_model
-                ):
-                    DisplayFigure(exp.plot_forward_model())
-                    displayed_any = True
-                if (
-                    exp.prep.modifiedS is not None
-                    and exp.output.valsS is not None
-                    and exp.config.plot_error_model
-                ):
-                    DisplayFigure(exp.plot_error_model())
-                    displayed_any = True
-                if (
-                    exp.prep.modifiedF is not None
-                    and exp.output.valsF is not None
-                    and exp.config.plot_error_forward_model
-                ):
-                    DisplayFigure(exp.plot_error_forward_model())
-                    displayed_any = True
+                cols = st.columns([1, 2])
+                with cols[0]:
+                    state.exp.config.x0Reset = st.toggle(
+                        "Reset x0",
+                        key="x0_reset",
+                        value=state.exp.config.x0Reset,
+                    )
+                with cols[1]:
+                    st.markdown(
+                        "Resets the initial guess to the default value.",
+                    )
 
-            if not displayed_any:
+                cols = st.columns([1, 2])
+                with cols[0]:
+                    state.exp.config.adaptiveActive = st.toggle(
+                        "Adaptive",
+                        key="adaptive_active",
+                        value=state.exp.config.adaptiveActive,
+                    )
+                with cols[1]:
+                    st.markdown(
+                        "Activates adaptive optimization mode, where the algorithm incrementally decreases the kernel widths in the model space until further reductions in error are no longer achieved.",
+                    )
+
+                cols = st.columns([1, 2])
+                with cols[0]:
+                    state.exp.config.adaptiveResiduumMode = st.toggle(
+                        "Residuum Mode",
+                        key="adaptive_residuum_mode",
+                        value=state.exp.config.adaptiveResiduumMode,
+                    )
+                with cols[1]:
+                    st.markdown(
+                        "If enabled, the adaptive optimization mode will be based on the residuum error instead of the chosen method error.",
+                    )
+                # --- --- --- #
+
+        with tab[7]:
+            if state.exp.output is not None:
+                # Characteristics
+                Label(
+                    text="Characteristics",
+                    mb=-5,
+                )
+                LatexRow(
+                    [
+                        r"\text{avg}\ \mathbb{E}_S(\omega) \approx "
+                        + str(np.round(np.mean(state.exp.output.expS), 2)),
+                        r"\text{avg}\ \mathbb{V}^2_S(\omega) \approx "
+                        + str(np.round(np.mean(state.exp.output.stdS), 2)),
+                        r"\text{avg}\ \max_\tau \left|\mathcal{L}[S] - F\right|(\tau) \approx "
+                        + f"{np.mean(state.exp.output.forwardSMaxError):.2e}",
+                    ]
+                )
+
+                # Frequency Moments
+                HR()
+                Label(
+                    text="Frequency Moments",
+                    mb=10,
+                )
+                DictionaryTable(
+                    {
+                        "α": ["α = " + str(alpha) for alpha in MOMENT_ORDERS],
+                        "avg ⟨ωᵅ⟩": [
+                            f"{np.mean(moment):.2e}"
+                            for moment in state.exp.output.freqMomentsS.T
+                        ],
+                    }
+                )
+
+                # Coefficients
+                if state.coefficients_as:
+                    HR()
+                    Label(
+                        text="Coefficients",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_coeffs(state.exp),
+                        use_container_width=True,
+                    )
+
+                # Plot Model
+                if state.model_as:
+                    HR()
+                    Label(
+                        text="Model",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_model(state.exp),
+                        use_container_width=True,
+                    )
+
+                # Plot Forward Model
+                if state.forward_model_as:
+                    HR()
+                    Label(
+                        text="Forward Model",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_forward_model(state.exp),
+                        use_container_width=True,
+                    )
+
+                # Plot Forward Model Error
+                if state.forward_model_error_as:
+                    HR()
+                    Label(
+                        text="Forward Model Error",
+                        mb=-15,
+                    )
+                    plotly_chart(
+                        plot_forward_model_error(state.exp),
+                        use_container_width=True,
+                    )
+
+            else:  # TODO Test this!
                 st.warning(
                     "There is nothing to display yet.",
                     icon="⚠️",
+                )
+                st.info(
+                    "- Save your configurations by pressing 💾\n"
+                    "- Either press 🚀 or run via the terminal\n"
+                )
+
+                st.info(
+                    "To run via terminal, use the following commands.\n\n"
+                    "```bash\n"
+                    "source venv/bin/activate\n"
+                    "poetry shell\n"
+                    f"python {state.exp.path_run}\n"
+                    "deactivate\n"
+                    "```"
                 )
 
 

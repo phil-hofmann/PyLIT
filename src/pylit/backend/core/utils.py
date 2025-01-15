@@ -1,4 +1,5 @@
 import json
+import inspect
 import numpy as np
 from typing import Tuple
 from pylit.global_settings import ARRAY, FLOAT_DTYPE
@@ -40,11 +41,18 @@ def numpy_array_decoder(obj):
 
 def load_from_json(obj, filename):
     """
-    Loads an object from a JSON file.
+    Loads an object from a JSON file, filtering out any keys not present in the __init__ method.
     """
     with open(filename, "r") as file:
         obj_dict = json.load(file, object_hook=numpy_array_decoder)
-    return obj(**obj_dict)
+
+    # Get the parameter names of the __init__ method
+    init_params = inspect.signature(obj.__init__).parameters
+
+    # Filter out keys not present in the __init__ method
+    filtered_dict = {k: v for k, v in obj_dict.items() if k in init_params}
+
+    return obj(**filtered_dict)
 
 
 def empty_array():
@@ -54,8 +62,7 @@ def empty_array():
 def exp_std(x: ARRAY, rho: ARRAY) -> Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
     """Calculate the corrected sample variance for the input data array.
 
-    Parameters:
-    -----------
+    Args:
         x: ARRAY
             The input data array.
 
@@ -63,11 +70,21 @@ def exp_std(x: ARRAY, rho: ARRAY) -> Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
             The (probably unscaled and negative) density function of the input data array.
 
     Returns:
-    --------
         Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
             Returns the expected value and the standard deviation."""
 
-    rho = rho - np.min(rho) * any(rho < 0.0)  # Shift the density function
+    # Type Conversion
+    x = np.asarray(x).astype(FLOAT_DTYPE)
+    rho = np.asarray(rho).astype(FLOAT_DTYPE)
+
+    # Integrity
+    if x.size != rho.size:
+        raise ValueError(
+            "The input data array and the density function must have the same size."
+        )
+
+    # Calculate the expected value and the standard deviation
+    rho = np.amax([rho, np.zeros_like(rho)], axis=0) # Ensure that the density function is non-negative
     rho = rho / np.sum(rho)  # Normalize the density function
     mean = np.sum(x * rho)  # Expected value
     std = np.sqrt(np.sum((x - mean) ** 2 * rho))  # Standard deviation
@@ -75,63 +92,91 @@ def exp_std(x: ARRAY, rho: ARRAY) -> Tuple[FLOAT_DTYPE, FLOAT_DTYPE]:
     return mean, std
 
 
-def extend_on_negative_axis(nodes: ARRAY) -> ARRAY:
+def moments(
+    x: ARRAY, rho: ARRAY, alphas: ARRAY
+) -> ARRAY:
+    # Type Conversion
+    x = np.asarray(x).astype(FLOAT_DTYPE)
+    rho = np.asarray(rho).astype(FLOAT_DTYPE)
+    alphas = np.asarray(alphas).astype(FLOAT_DTYPE)
+
+    # Integrity
+    if x.size != rho.size:
+        raise ValueError(
+            "The input data array and the density function must have the same size."
+        )
+
+    # Calculate the moments
+    return np.array([np.sum(x**alpha * rho) for alpha in alphas], dtype=FLOAT_DTYPE) # Moments
+
+
+def complete_detailed_balance(
+    omegas: ARRAY, S: ARRAY, beta: FLOAT_DTYPE
+) -> Tuple[ARRAY, ARRAY]:
     """Extend the input array to the negative axis.
 
     Args:
     -----
-    nodes : ARRAY
-        The array containing the nodes which are greater or equal zero.
+    omegas : ARRAY
+        The input array of omegas in ascending order.
+    S : ARRAY
+        The input array of S(omega) values.
+    beta : FLOAT_DTYPE
+        The decay factor.
 
     Raises:
     -------
     ValueError:
-        If the nodes are not non-negative.
+        If the omegas are not in ascending order.
 
     Returns
     -------
-    ARRAY:
-        The nodes extended symmetrical to the negative axis.
+    Tuple[ARRAY, ARRAY]:
+        The completed omega and S values.
     """
 
     # Type check
-    if not isinstance(nodes, ARRAY):
-        raise TypeError("The nodes must be an array.")
+    if not isinstance(omegas, ARRAY):
+        raise TypeError("The input array of omegas must be an array.")
 
     # Type Conversion
-    nodes = nodes.astype(FLOAT_DTYPE)
+    omegas = omegas.astype(FLOAT_DTYPE)
 
     # Integrity
-    if np.any(nodes < 0.0):
-        raise ValueError("The nodes must be non-negative.")
+    if not np.all(omegas[:-1] <= omegas[1:]):
+        raise ValueError("The input array of omegas must be in ascending order.")
 
-    return np.concatenate((-np.flip(nodes), nodes))
+    # S(ω) = exp(βω) S(-ω) for ω in (-∞, +∞)
+    idx_pos = np.where(omegas >= 0)
+    idx_neg = np.where(omegas < 0)
 
+    omegas_pos, S_pos = omegas[idx_pos], S[idx_pos]
+    omegas_neg, S_neg = omegas[idx_neg], S[idx_neg]
 
-def extend_S(S_pos: ARRAY, omega_pos: ARRAY, beta: FLOAT_DTYPE) -> ARRAY:
-    """Extend the S(omega) function to the negative axis.
+    # Complete ω > 0
+    omegas_neg_to_pos = np.abs(omegas_neg)
+    S_neg_to_pos = S_neg * np.exp(beta * omegas_neg_to_pos)
 
-    With given values of S(omega) having omega >= 0
-    this function returns S(omega) with the left side, thus where
-    omega < 0.
+    omegas_pos_complete_unordered = np.concatenate((omegas_neg_to_pos, omegas_pos))
+    S_pos_complete_unordered = np.concatenate((S_neg_to_pos, S_pos))
 
-    Args:
-    -----
-    S_pos : ARRAY
-        The values of S(omega) with omega >= 0.
-    omega_pos : ARRAY
-        The non negative omega points.
-    beta : FLOAT_DTYPE
-        The decay factor.
+    idx_pos_complete = np.argsort(omegas_pos_complete_unordered)
+    omegas_pos_complete = omegas_pos_complete_unordered[idx_pos_complete]
+    S_pos_complete = S_pos_complete_unordered[idx_pos_complete]
 
-    Returns:
-    --------
-    ARRAY:
-        S(omega) values.
-    """
+    # Complete ω < 0
+    omegas_pos_to_neg = -omegas_pos
+    S_pos_to_neg = S_pos * np.exp(beta * omegas_pos_to_neg)
 
-    S_neg = np.flip(S_pos)
-    S_neg = S_pos[:] * np.exp(-beta * omega_pos[:])
-    S_ext = np.concatenate((np.flip(S_neg), S_pos))
+    omegas_neg_complete_unordered = np.concatenate((omegas_pos_to_neg, omegas_neg))
+    S_neg_complete_unordered = np.concatenate((S_pos_to_neg, S_neg))
 
-    return S_ext
+    idx_neg_complete = np.argsort(omegas_neg_complete_unordered)
+    omegas_neg_complete = omegas_neg_complete_unordered[idx_neg_complete]
+    S_neg_complete = S_neg_complete_unordered[idx_neg_complete]
+
+    # Glue the two parts together
+    omegas_complete = np.concatenate((omegas_neg_complete, omegas_pos_complete))
+    S_complete = np.concatenate((S_neg_complete, S_pos_complete))
+
+    return omegas_complete, S_complete
