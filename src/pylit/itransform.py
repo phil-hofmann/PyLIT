@@ -96,31 +96,41 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     # Get Model, Method, and Optimizer
     ModelClass = getattr(models, config.model_name)
+    model_params = inspect.signature(ModelClass.__init__).parameters.keys()
+    if not "tau" in model_params:
+        raise ValueError("The model does not have a 'tau' parameter.")
+    if not "mu" in model_params:
+        raise ValueError("The model does not have a 'mu' parameter.")
+
     method_func = getattr(methods, config.method_name)
     optimizer_func = getattr(optimizer, config.optimizer_name)
 
-    omega_l, omega_r = y_tol_fit(prep.scaled_D, prep.omega, prep.exp_D, config.y_tol)
+    omega_l, omega_r = y_tol_fit(prep.scaled_D, prep.omega, prep.exp_D*prep.beta, config.y_tol) # NOTE REM *prep.beta
 
-    # NOTE Not observing any difference here ...:
     if config.detailed_balance:
         omega_l = 0.0
 
     mu_S = np.linspace(omega_l, omega_r, config.n, dtype=FLOAT_DTYPE)
-    sigma_S = fat_tol_fit(
-        omega=prep.omega,
-        D=prep.scaled_D,
-        mu=mu_S,
-        model_name=config.model_name,
-        tol=config.fat_tol,
-        widths=config.widths,
-        window=config.window,
+
+    sigma_S = (
+        fat_tol_fit(
+            omega=prep.omega,
+            D=prep.scaled_D,
+            mu=mu_S,
+            model_name=config.model_name,
+            tol=config.fat_tol,
+            widths=config.widths,
+            window=config.window,
+        )
+        if "sigma" in model_params
+        else None
     )
 
-    # NOTE That works fine for the "10"-data
-    mu_S = np.linspace(0, 4, config.n, dtype=FLOAT_DTYPE)
-    sigma_S = [0.5, 0.6, 0.7, 0.8]
-
-    model = ModelClass(prep.tau, mu_S, sigma_S)
+    model = (
+        ModelClass(tau=prep.tau, mu=mu_S, sigma=sigma_S)
+        if sigma_S is not None
+        else ModelClass(tau=prep.tau, mu=mu_S)
+    )
 
     # Regression Matrix
     if config.tau_scaling is not None:
@@ -297,18 +307,18 @@ if __name__ == "__main__":
     config = Configuration(
         path_F=path_F,
         path_D=path_D,
-        adaptive=True,
-        optimizer_name="nesterov",
-        method_name="l2_fit",
-        y_tol=0.99,
-        maxiter=10_000,
+        adaptive=False,
+        optimizer_name="nnls",
+        method_name="tv_reg",
         lambd=np.array([10e-8], dtype=FLOAT_DTYPE),
-        tau_scaling=3.0,
-        # detailed_balance=False,
+        maxiter=10_000,
+        detailed_balance=True,
+        model_name="Uniform",
     )
     prep = prepare(config)
     res = itransform(config, prep)
 
+    print(f"beta: {prep.beta}")
     print(f"mu: {res.mu}, sigma: {res.sigma}")
 
     import matplotlib.pyplot as plt

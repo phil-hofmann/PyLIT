@@ -15,6 +15,7 @@ class Configuration:
         path_L_S: Path | None = None
         path_prep: Path | None = None
         path_res: Path | None = None
+
         non_negative: bool = True
         detailed_balance: bool = True
         tau_scaling: float | None = 1.0
@@ -24,10 +25,12 @@ class Configuration:
             "Cauchy",
             "Uniform",
         ] = "Gauss"
-        y_tol: float = 0.95
-        widths: int = 100
+        n: int = 100
+        y_tol: float = 0.01
         window: int = 5
-        fat_tol: float = 0.95
+        widths: int = 100
+        fat_tol: float = 0.01
+
         method_name: Literal[
             "l1_reg",
             "l2_reg",
@@ -38,6 +41,7 @@ class Configuration:
             "cdf_l2_fit",
         ] = "l1_reg"
         lambd: np.ndarray | float | None = None
+
         optimizer_name: Literal[
             "nnls",
             "nesterov",
@@ -70,11 +74,11 @@ class Configuration:
         "Cauchy",
         "Uniform",
     ] = "Gauss"
-    n: int = 10
-    y_tol: float = 0.99
+    n: int = 100
+    y_tol: float = 0.01
     window: int = 5
     widths: int = 100
-    fat_tol: float = 0.99
+    fat_tol: float = 0.01
 
     # Method
     method_name: Literal[
@@ -102,6 +106,12 @@ class Configuration:
     svd: bool = False
     protocol: bool = False
 
+    def __post_init__(self):
+        if self.model_name == "Uniform" and self.adaptive:
+            raise ValueError(
+                "Adaptive regularization is not supported for the Uniform model."
+            )
+
 
 @dataclass
 class Preparation:
@@ -113,16 +123,17 @@ class Preparation:
         beta: float
         max_F: float
         scaled_F: np.ndarray
+
         omega: np.ndarray
         D: np.ndarray
+        int_D: float
+        scaled_D: np.ndarray
         exp_D: float
         std_D: float
         moments_D: np.ndarray
         forward_D: np.ndarray
         eps_D: np.ndarray
         max_eps_D: float
-        int_D: float
-        scaled_D: np.ndarray
     """
 
     # τ, F, β, Scaled F
@@ -152,13 +163,16 @@ class Result:
     Attributes:
         eps: np.ndarray
         residuals: np.ndarray
+
         mu: np.ndarray
         sigma: np.ndarray
         coefficients: np.ndarray
+
         S: np.ndarray
         exp_S: np.ndarray
         std_S: np.ndarray
         moments_S: np.ndarray
+
         forward_S: np.ndarray
         eps_S: np.ndarray
         max_eps_S: np.ndarray

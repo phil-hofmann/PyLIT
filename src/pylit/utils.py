@@ -263,7 +263,7 @@ def y_tol_fit(
     # Integrity
     if tol <= 0.0 or tol > 1.0:
         raise ValueError("The tolerance level must be within the interval (0, 1].")
-
+    tol = 1 - tol
     idx_exp = np.argmin(np.abs(omega - exp_D))
     idx_l, idx_r = idx_exp, idx_exp
     I = np.trapezoid(D, omega)
@@ -309,7 +309,7 @@ def _width_start_values(
             The lower and upper bounds of the kernel widths.
     """
     e = np.trapezoid(omega * D, omega)
-    var = np.trapezoid((D - e) ** 2 * omega, omega)
+    var = np.trapezoid((D - e) ** 2 * D, omega)
     sigma = np.sqrt(var)
     return 0.0005 * sigma, 0.09 * sigma  # TODO Unclear why these values are chosen
 
@@ -376,6 +376,7 @@ def fat_tol_fit(
     if best_sigma is None:
         raise ValueError("Keine Sigmas erfüllen die Toleranzanforderung.")
     return best_sigma
+
 
 if __name__ == "__main__":
     print(

@@ -12,7 +12,6 @@ class Uniform(LinearRegressionModel):
         self,
         tau: np.ndarray[FLOAT_DTYPE],
         mu: np.ndarray[FLOAT_DTYPE],
-        sigma: np.ndarray[FLOAT_DTYPE],
     ) -> None:
         """Initialize the model."""
         # Type Conversion
