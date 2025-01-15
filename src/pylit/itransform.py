@@ -308,10 +308,10 @@ if __name__ == "__main__":
         path_F=path_F,
         path_D=path_D,
         adaptive=False,
-        optimizer_name="nnls",
-        method_name="tv_reg",
+        optimizer_name="nesterov",
+        method_name="l1_reg",
         lambd=np.array([10e-8], dtype=FLOAT_DTYPE),
-        maxiter=10_000,
+        maxiter=1_000,
         detailed_balance=True,
         model_name="Uniform",
     )
