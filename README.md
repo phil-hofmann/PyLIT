@@ -1,4 +1,5 @@
 # Welcome to Pylit 🚀!
+
 **✨Python Laplace Inverse Transformation✨**
 
 This software provides a Python implementation of the inverse Laplace Transformation.
@@ -38,76 +39,48 @@ git clone https://github.com/phil-hofmann/pylit.git
 cd pylit
 ```
 
-2. **Make the shell scripts executable**
+2. **Create a virtual environment**
 
 ```bash
-chmod +x app_setup.sh app_start.sh
+python3 -m venv .venv
 ```
 
-3. **Run the setup**
+3. **Activate the virtual environment**
 
 ```bash
-./app_setup.sh
+source .venv/bin/activate
+```
+
+4. \*\*Install pip (if not already installed)
+
+```bash
+python3 -m ensurepip --upgrade
+```
+
+5. **Install Poetry**
+
+```bash
+pip install poetry
+```
+
+6. **Install dependencies using Poetry**
+
+```bash
+poetry install
+```
+
+7. **Deactivate the virtual environment**
+
+```bash
+deactivate
 ```
 
 ### ⚙️ Usage Guide
 
-Follow these steps to get started with your workspace and run your experiments.
-
-1. **Create a workspace folder**
-   Create a dedicated workspace folder on your local file system for your projects.
-
-2. **Start Pylit**
-
-   ```bash
-   ./app_start.sh
-   ```
-
-3. **Configure settings**
-
-   - Navigate to 'settings'
-   - Change the workspace variable to point to your created workspace directory
-   - Save the settings and refresh the page
-
-4. **Create your first experiment**
-
-   - Navigate to 'experiment'
-   - Begin by typing a name and hit enter
-
-5. **Finalize Experiment Setup**
-
-   - Once you've completed setting up your experiment, save it and you're ready to run!
-   - Running the experiment via terminal is optional.
-
-### 🚀 Running via Terminal
-
-6. **Activate the virtual environment**
-   Open a new terminal tab and activate the virtual environment
-
-```bash
-   source venv/bin/activate
-```
-
-6. **Navigate to your workspace**
-
-   Navigate to your workspace directory
-
-   ```bash
-   cd pylit-workspace
-   ```
-
-7. **Run the experiment script**
-
-   Execute your experiment by running the script
-
-   ```bash
-   poetry run python <exp_name>/run.py
-   ```
-
-8. **View Results**
-   Wait for the experiment to complete and view your results. Voilà!
+**NEEDS AN UPDATE**
 
 Happy experimenting! 🎉
 
 ### 🏗️ DIY
+
 How to implement [Methods](#), [Models](#) and [Optimizers](#) by yourself.
