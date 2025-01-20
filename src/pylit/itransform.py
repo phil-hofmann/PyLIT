@@ -2,7 +2,6 @@ import inspect
 import numpy as np
 import pandas as pd
 
-from pathlib import Path
 from pylit import (
     methods,
     models,
@@ -298,41 +297,3 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
         save_to_json(res, config.path_res)
 
     return res
-
-
-if __name__ == "__main__":
-    path_F = Path("/Users/philhofmann/Documents/pylit-workspace/new/src/csv/F.csv")
-    path_D = Path("/Users/philhofmann/Documents/pylit-workspace/new/src/csv/D.csv")
-
-    config = Configuration(
-        path_F=path_F,
-        path_D=path_D,
-        adaptive=False,
-        optimizer_name="nesterov",
-        method_name="l1_reg",
-        lambd=np.array([10e-8], dtype=FLOAT_DTYPE),
-        maxiter=1_000,
-        detailed_balance=True,
-        model_name="Uniform",
-    )
-    prep = prepare(config)
-    res = itransform(config, prep)
-
-    print(f"beta: {prep.beta}")
-    print(f"mu: {res.mu}, sigma: {res.sigma}")
-
-    import matplotlib.pyplot as plt
-
-    plt.plot(prep.omega, res.S[0][0], color="red")
-    plt.plot(prep.omega, prep.scaled_D * prep.max_F, color="black", linestyle="--")
-    plt.plot(res.mu, np.zeros_like(res.mu), "o", color="blue")
-    plt.show()
-
-    plt.plot(prep.tau, res.forward_S[0][0], color="red")
-    plt.plot(prep.tau, prep.forward_D * prep.max_F, color="green")
-    plt.plot(prep.tau, prep.F[0], color="black", linestyle="--")
-    plt.show()
-
-    plt.plot(prep.tau, res.eps_S[0][0], color="red")
-    plt.plot(prep.tau, prep.eps_D[0], color="black", linestyle="--")
-    plt.show()
