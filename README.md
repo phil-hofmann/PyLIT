@@ -74,16 +74,16 @@ poetry add git+https://github.com/phil-hofmann/pylit.git
 poetry add git+https://github.com/phil-hofmann/pylit.git@branch_name
 ```
 
-6. **Enter the Poetry shell for working in your project**
+6. **To verify that pylit was installed correctly, you can run**
 
 ```bash
-poetry shell
+poetry show pylit
 ```
 
-7. **Exit the Poetry shell when you're done**
+7. **Enter the Poetry shell for working in your project**
 
 ```bash
-exit
+poetry run python my_python_file.py
 ```
 
 8. **Deactivate the virtual environment**
@@ -99,7 +99,7 @@ To include this package in your project using **Anaconda**, follow these steps:
 1. **Create a Conda environment with Python 3.12 or newer (if not already set up)**
 
 ```bash
-conda create --name venv python>=3.12
+conda create --name venv python=3.12
 ```
 
 2. **Activate the environment**
@@ -120,13 +120,19 @@ conda install pip && pip --version
 pip install git+https://github.com/phil-hofmann/pylit.git
 ```
 
-To install from a specific branch, use
+**To install from a specific branch, use**
 
 ```bash
 pip install git+https://github.com/phil-hofmann/pylit.git@branch_name
 ```
 
-5. **When you're done working, deactivate the environment**
+5. **To verify that pylit was installed correctly, you can run**
+
+```bash
+pip show pylit
+```
+
+6. **When you're done working, deactivate the environment**
 
 ```bash
 conda deactivate
@@ -177,13 +183,14 @@ poetry install
 deactivate
 ```
 
-### ⚙️ Usage: Example
+### ⚙️ Example Usage
 
 ```python
 if __name__ == "__main__":
-    import pylit
     import numpy as np
     from pathlib import Path
+    from pylit import prepare, itransform
+    from pylit.core.data_classes import Configuration
 
     path_F = Path("F.csv")
     path_D = Path("D.csv")
@@ -199,7 +206,7 @@ if __name__ == "__main__":
         detailed_balance=True,
         model_name="Uniform",
     )
-    prep = prepare(config)
+    prep = pylit.prepare(config)
     res = itransform(config, prep)
 
     print(f"beta: {prep.beta}")
@@ -225,5 +232,7 @@ if __name__ == "__main__":
 Happy experimenting! 🎉
 
 ### 🏗️ DIY
+
+**!WIP!**
 
 How to implement [Methods](#), [Models](#) and [Optimizers](#) by yourself.
