@@ -6,8 +6,6 @@ from pylit.njit_utils import argmax
 from pylit.core.data_classes import Method, Solution
 from pylit.settings import FLOAT_DTYPE, INT_DTYPE, TOL
 
-# TODO FIX IMPLEMENTATION!
-
 
 def nnls(
     R: np.ndarray,
@@ -16,20 +14,16 @@ def nnls(
     method: Method,
     maxiter: INT_DTYPE = None,
     tol: FLOAT_DTYPE = None,
-    svd: bool = False,  # TODO add SVD
+    svd: bool = False,  # NOTE No svd
     protocol: bool = False,
 ) -> Solution:
     """Solves the optimization problem using the non-negative least square method of Bro."""
-    # Integrity
-    if not R.shape[0] == len(F):
-        raise ValueError("The number of rows of R and the length of F must be equal")
 
     # Type Conversion
     R = R.astype(FLOAT_DTYPE)
     F = F.astype(FLOAT_DTYPE)
     x0 = x0.astype(FLOAT_DTYPE)
 
-    # Prepare
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
@@ -53,40 +47,29 @@ def nnls(
 
 @nb.njit
 def _nnls(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> np.ndarray:
-
-    # Initialize variables:
+    # A. Initialization
     n = R.shape[1]
-    x = np.copy(x0)
-    P = np.zeros(n, dtype=INT_DTYPE)
-
-    # Subroutine implementation:
-
-    # Compute gradient
-    grad_fx = -grad_f(x, R, F)
+    P = np.zeros(n, dtype=INT_DTYPE)  # A.1, A.2
+    x = np.copy(x0)  # A.3
+    grad_fx = -grad_f(x, R, F)  # A.4
     fx = f(x, R, F)
 
+    # B. Main loop
     i = 0
-    while (not (P > 0).all()) and (grad_fx[1 - P > 0] > tol).any():
-        # Get the "most" active coeff index and move to inactive set
-        grad_fx[P > 0] = -np.inf
+    while (P == 0).any() and (grad_fx[P == 0] > tol).any():  # B.1
+        grad_fx[P == 1] = -np.inf  # B.2
         k = argmax(grad_fx)  # B.2
         P[k] = 1  # B.3
+        s = np.zeros(n, dtype=np.float64)  # B.4
+        s[P == 1] = solution(R, F, P.nonzero()[0])  # B.4
 
-        # Iteration solution
-        s = np.zeros(n, dtype=np.float64)
-        s[P > 0] = solution(R, F, (P > 0).nonzero()[0])
-
-        # Inner loop # TODO: Include the projection operator pr
-        while (i < maxiter) and (s[P > 0].min() < 0):  # C.1 # NOTE  ... <= tol
-            alpha_ind = (
-                (s < 0) & (P > 0)  # NOTE s < tol
-            ).nonzero()  # INTRODUCE pr AS PROJECTION OPERATOR !?!
-            alpha = (x[alpha_ind] / (x[alpha_ind] - s[alpha_ind])).min()  # C.2
-            x *= 1 - alpha
-            x += alpha * s
-            P[x <= tol] = 0  # NOTE x < tol
-            s[P > 0] = solution(R, F, (P > 0).nonzero()[0])
-            s[1 - P > 0] = 0  # C.6
+        # C. Inner loop
+        while (i < maxiter) and (s[P == 1].min() < 0):  # C.1
+            alpha = -(x[P == 1] / (x[P == 1] - s[P == 1])).min()  # C.2
+            x = x + alpha * (s - x)  # C.3
+            P[x <= tol] = 0  # C.4
+            s[P == 1] = solution(R, F, P.nonzero()[0])  # C.5
+            s[P == 0] = 0  # C.6
             i += 1
 
             fx1 = f(x, R, F)
@@ -94,8 +77,8 @@ def _nnls(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> np.ndarray:
                 i = np.inf
             fx = fx1
 
-        x[:] = s[:]  # automatically copies ?!?
-        grad_fx = -grad_f(x, R, F)
+        x[:] = s[:]  # B.5
+        grad_fx = -grad_f(x, R, F)  # B.6
 
         if i == maxiter:
             break

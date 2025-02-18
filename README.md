@@ -207,7 +207,7 @@ if __name__ == "__main__":
         detailed_balance=True,
         model_name="Uniform",
     )
-    prep = pylit.prepare(config)
+    prep = prepare(config)
     res = itransform(config, prep)
 
     print(f"beta: {prep.beta}")

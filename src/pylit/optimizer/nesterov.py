@@ -49,7 +49,7 @@ def nesterov(
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)  # TODO check this
 
-    # Call subroutine
+    # Subroutine
     x = _nesterov(
         R,
         F,
@@ -64,7 +64,6 @@ def nesterov(
     )
     fx = method.f(x, R, F)
 
-    # Return solution
     return Solution(x, fx, FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2)))
 
 

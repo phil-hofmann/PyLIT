@@ -23,7 +23,6 @@ def adam(
     F = F.astype(FLOAT_DTYPE)
     x0 = x0.astype(FLOAT_DTYPE)
 
-    # Prepare
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
