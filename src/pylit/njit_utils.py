@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 
-
+# TODO REMOVE!
 @njit
 def jit_sub_mat_by_index_set(mat: np.ndarray, I: np.ndarray) -> np.ndarray:
     n = len(I)

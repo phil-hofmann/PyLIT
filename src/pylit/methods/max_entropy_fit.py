@@ -10,10 +10,6 @@ from pylit.settings import (
     FASTMATH,
     TOL_LOG,
 )
-from pylit.njit_utils import (
-    jit_sub_mat_by_index_set,
-    jit_sub_vec_by_index_set,
-)
 
 # Filter out NumbaPerformanceWarning
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)

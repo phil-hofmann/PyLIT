@@ -2,7 +2,6 @@ import numpy as np
 
 from pylit.settings import FLOAT_DTYPE
 from pylit.utils import diff_interval
-from pylit.models.lrm import LinearRegressionModel
 
 """Module for scaling and rescaling of Laplace transforms for (all kinds of) models."""
 
@@ -37,8 +36,8 @@ class LinearScaling:
             raise ValueError("The right end point must be strictly positive.")
 
         # Compute tau1 and tau0 - scaling endpoints
-        self._tau1 = np.max(tau)
-        self._tau0 = np.min(tau)
+        self._tau1 = np.max(tau) # TODO change to beta ...
+        self._tau0 = 0.0
 
         # Compute the diffeomorphism of the interval
         self._psy, _ = diff_interval(self._tau1, self._tau0)

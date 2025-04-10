@@ -104,7 +104,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     method_func = getattr(methods, config.method_name)
     optimizer_func = getattr(optimizer, config.optimizer_name)
 
-    omega_l, omega_r = y_tol_fit(prep.scaled_D, prep.omega, prep.exp_D*prep.beta, config.y_tol) # NOTE REM *prep.beta
+    omega_l, omega_r = 0.0, y_tol_fit(prep.scaled_D, prep.omega, config.y_tol)
 
     if config.detailed_balance:
         omega_l = 0.0
@@ -125,6 +125,9 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
         else None
     )
 
+    mu_S *= prep.beta
+    sigma_S = sigma_S * prep.beta if sigma_S is not None else None
+
     model = (
         ModelClass(tau=prep.tau, mu=mu_S, sigma=sigma_S)
         if sigma_S is not None
@@ -142,7 +145,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     # Method Arguments
     args = {
-        "omega": prep.omega,
+        "omegas": prep.omega,
         "D": prep.scaled_D,
         "E": model(prep.omega, matrix=True),
     }
@@ -164,7 +167,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
             _max_F = prep.max_F[j]
             method = method_func(**args, lambd=_lambd)
             c0 = (
-                config.c0[i]
+                config.c0[i] / _max_F
                 if config.c0 is not None
                 else np.zeros(m, dtype=FLOAT_DTYPE)
             )

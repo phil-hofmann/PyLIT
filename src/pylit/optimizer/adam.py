@@ -47,6 +47,8 @@ def adam(
 
 @nb.njit
 def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd) -> np.ndarray:
+
+    # Initialize variables
     n = len(x0)
     beta1 = 0.9
     beta2 = 0.999
@@ -57,10 +59,17 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd) -> np.ndarray
     fx = 0.0
     lr_ = lr(R)
     V = None
+    eps_tol = 0.0
 
+    # Singular Value Decomposition
     if svd:
         R, F, x0, V = svd_optim(R, F, x0)
 
+    # Print header for protocol
+    if protocol:
+        print("Step", "Error")
+
+    # Subroutine
     for k in range(maxiter):
         grad = grad_f(x, R, F)
         m = beta1 * m + (1 - beta1) * grad
@@ -83,10 +92,13 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd) -> np.ndarray
         # Check tolerance
         fx1 = f(x, R, F)
         if k > 0 and np.abs(fx - fx1) < tol:
+            if protocol:
+                print("Converged by tolerance")
             break
         fx = fx1
 
+        # Print protocol
         if protocol:
-            print("step:", k + 1, "of", maxiter)
-
+            print(k + 1, fx1)
+            
     return x if V is None else V @ x

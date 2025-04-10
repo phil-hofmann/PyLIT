@@ -9,10 +9,6 @@ from pylit.settings import (
     INT_DTYPE,
     FASTMATH,
 )
-from pylit.njit_utils import (
-    jit_sub_mat_by_index_set,
-    jit_sub_vec_by_index_set,
-)
 
 # Filter out NumbaPerformanceWarning
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -130,16 +126,12 @@ def _l2_reg(lambd) -> Method:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
-        _, m = R.shape
+        m = len(P)
 
         # np.ix_ unsupported in numba
-
-        A = R.T @ R + lambd * np.eye(m)
-        A = jit_sub_mat_by_index_set(A, P)
-
-        b = R.T @ F
-        b = jit_sub_vec_by_index_set(b, P)
-
+        R_P = R[:, P]
+        A = R_P.T @ R_P + lambd * np.eye(m)
+        b = R_P.T @ F
         return np.asarray(np.linalg.solve(A, b)).astype(FLOAT_DTYPE)
 
     @njit(fastmath=FASTMATH)

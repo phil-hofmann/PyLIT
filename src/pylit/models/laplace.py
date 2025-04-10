@@ -22,6 +22,7 @@ class Laplace(LinearRegressionModel):
 
         # Integrity
         if np.any(sigma <= 0.0) or np.any(sigma > 1.0):
+            # TODO actually: 0 < sigma < 1/beta
             raise ValueError("The standard deviations must be in (0, 1).")
 
         # Initialize the Parent Class

@@ -9,10 +9,6 @@ from pylit.settings import (
     INT_DTYPE,
     FASTMATH,
 )
-from pylit.njit_utils import (
-    jit_sub_mat_by_index_set,
-    jit_sub_vec_by_index_set,
-)
 
 # Filter out NumbaPerformanceWarning
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -144,19 +140,18 @@ def _cdf_l2_fit(D, E, lambd) -> Method:
         P = np.asarray(P).astype(INT_DTYPE)
         n, m = R.shape
         k = len(D)
-        E_ = E[:, :m]
+        W = np.diag(np.arange(k, 0, -1) / n)
+        E_R = E[:, :m]
 
         # np.ix_ unsupported in numba
-
-        W = np.diag(np.arange(k, 0, -1) / n)
-
-        A = R.T @ R + lambd * E_.T @ W @ E_
-        A = jit_sub_mat_by_index_set(A, P)
-
-        b = R.T @ F + lambd * E_.T @ W @ D
-        b = jit_sub_vec_by_index_set(b, P)
+        R_P = R[:, P]
+        E_P = E_R[:, P]
+        A = R_P.T @ R_P + lambd * E_P.T @ W @ E_P
+        b = R_P.T @ F + lambd * E_P.T @ W @ D
 
         return np.asarray(np.linalg.solve(A, b)).astype(FLOAT_DTYPE)
+
+        return None
 
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
