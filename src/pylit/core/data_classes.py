@@ -28,7 +28,7 @@ class Configuration:
         n: int = 100
         y_tol: float = 0.01
         window: int = 5
-        widths: int = 100
+        widths: int = 50
         fat_tol: float = 0.01
 
         method_name: Literal[
@@ -77,7 +77,7 @@ class Configuration:
     n: int = 100
     y_tol: float = 0.01
     window: int = 5
-    widths: int = 100
+    widths: int = 50
     fat_tol: float = 0.01
 
     # Method

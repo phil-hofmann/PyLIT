@@ -241,7 +241,7 @@ def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, calla
 
 
 def y_tol_fit(
-    D: np.ndarray, omega: np.ndarray, exp_D: float, tol: float = 0.9
+    D: np.ndarray, omega: np.ndarray, tol: float = 0.95
 ) -> Tuple[float, float]:
     """
     Computes the threshold ω at a certain tolerance level.
@@ -251,8 +251,6 @@ def y_tol_fit(
             The target values.
         omega: np.ndarray
             The support points.
-        exp_D: float
-            The expected value of D.
         tol: float
             The tolerance level. (0 < tol <= 1)
 
@@ -260,35 +258,15 @@ def y_tol_fit(
         omega: float
             The threshold value ω.
     """
-    # Integrity
-    if tol <= 0.0 or tol > 1.0:
-        raise ValueError("The tolerance level must be within the interval (0, 1].")
-    tol = 1 - tol
-    idx_exp = np.argmin(np.abs(omega - exp_D))
-    idx_l, idx_r = idx_exp, idx_exp
+
     I = np.trapezoid(D, omega)
-    if np.isclose(I, 0.0):
-        raise ValueError("The integral of D(ω) is zero.")
 
     for i in range(len(omega)):
-        I_lr = np.trapezoid(D[idx_l : idx_r + 1], omega[idx_l : idx_r + 1])
-        ratio = I_lr / I
-        if ratio >= tol:
-            return omega[idx_l], omega[idx_r]
-        I_r = (
-            np.trapezoid(D[idx_l : idx_r + 2], omega[idx_l : idx_r + 2])
-            if idx_r + 2 < len(omega)
-            else 0.0
-        )
-        I_l = (
-            np.trapezoid(D[idx_l - 1 : idx_r + 1], omega[idx_l - 1 : idx_r + 1])
-            if idx_l > 0
-            else 0.0
-        )
-        if I_r >= I_l:
-            idx_r += 1
-        else:
-            idx_l -= 1
+        T_I = np.trapezoid(D[:i], omega[:i])
+        if T_I / I >= np.abs(1.0 - tol):
+            return omega[i]
+            print(w[i])
+    return None
 
 
 def _width_start_values(
@@ -309,9 +287,9 @@ def _width_start_values(
             The lower and upper bounds of the kernel widths.
     """
     e = np.trapezoid(omega * D, omega)
-    var = np.trapezoid((D - e) ** 2 * D, omega)
+    var = np.trapezoid((omega - e) ** 2 * D, omega)
     sigma = np.sqrt(var)
-    return 0.0005 * sigma, 0.09 * sigma  # TODO Unclear why these values are chosen
+    return 0.0001 * sigma, sigma  # TODO Unclear why these values are chosen
 
 
 def fat_tol_fit(
@@ -344,6 +322,7 @@ def fat_tol_fit(
         np.ndarray
             The best kernel widths under the given specifications.
     """
+
     n_mu, idx_peak = len(mu), np.argmax(D)
     peak_val = D[idx_peak]
     sigma_lower, sigma_upper = _width_start_values(omega, D)
@@ -369,7 +348,7 @@ def fat_tol_fit(
             continue
         _peak_val = _D[idx_peak]
         _eps = np.max(np.abs(_peak_val - peak_val)) / peak_val
-        if _eps <= tol:
+        if _eps <= np.abs(1.0 - tol):
             best_sigma = np.copy(_sigma)
             break
 

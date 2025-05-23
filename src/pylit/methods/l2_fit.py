@@ -139,15 +139,13 @@ def _l2_fit(D, E, lambd) -> Method:
         F = F.astype(FLOAT_DTYPE)
         P = P.astype(INT_DTYPE)
         _, m = R.shape
-        E_ = E[:, m]
+        E_R = E[:, :m]
 
         # np.ix_ unsupported in numba
-
-        A = R.T @ R + lambd * E_.T @ E_
-        A = jit_sub_mat_by_index_set(A, P)
-
-        b = R.T @ F + lambd * E_.T @ D
-        b = jit_sub_vec_by_index_set(b, P)
+        R_P = R[:, P]
+        E_P = E_R[:, P]
+        A = R_P.T @ R_P + lambd * E_P.T @ E_P
+        b = R_P.T @ F + lambd * E_P.T @ D
 
         return np.linalg.solve(A, b)
 

@@ -5,6 +5,10 @@ import numba as nb
 from pylit.njit_utils import argmax
 from pylit.core.data_classes import Method, Solution
 from pylit.settings import FLOAT_DTYPE, INT_DTYPE, TOL
+from pylit.njit_utils import (
+    jit_sub_mat_by_index_set,
+    jit_sub_vec_by_index_set,
+)
 
 
 def nnls(
@@ -24,6 +28,7 @@ def nnls(
     F = F.astype(FLOAT_DTYPE)
     x0 = x0.astype(FLOAT_DTYPE)
 
+    # Initialize Variables
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
@@ -47,11 +52,15 @@ def nnls(
 
 @nb.njit
 def _nnls(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> np.ndarray:
+    # Print header for protocol
+    if protocol:
+        print("Step", "Error")
+
     # A. Initialization
     n = R.shape[1]
     P = np.zeros(n, dtype=INT_DTYPE)  # A.1, A.2
     x = np.copy(x0)  # A.3
-    grad_fx = -grad_f(x, R, F)  # A.4
+    grad_fx = R.T @ (F - R @ x)  # A.4
     fx = f(x, R, F)
 
     # B. Main loop
@@ -64,16 +73,18 @@ def _nnls(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> np.ndarray:
         s[P == 1] = solution(R, F, P.nonzero()[0])  # B.4
 
         # C. Inner loop
-        while (i < maxiter) and (s[P == 1].min() < 0):  # C.1
+        while (i < maxiter) and (s[P == 1].min() <= 0.0):  # C.1
             alpha = -(x[P == 1] / (x[P == 1] - s[P == 1])).min()  # C.2
             x = x + alpha * (s - x)  # C.3
             P[x <= tol] = 0  # C.4
-            s[P == 1] = solution(R, F, P.nonzero()[0])  # C.5
+            s[P == 1] = solution(R, F, P.nonzero()[0])  # C.5 # TODO CHECK SOLUTIONS
             s[P == 0] = 0  # C.6
             i += 1
 
             fx1 = f(x, R, F)
             if np.abs(fx - fx1) < tol:
+                if protocol:
+                    print("Converged by tolerance.")
                 i = np.inf
             fx = fx1
 
@@ -83,6 +94,10 @@ def _nnls(R, F, f, grad_f, solution, x0, maxiter, tol, protocol) -> np.ndarray:
         if i == maxiter:
             break
 
+        if protocol:
+            print(int(i + 1), fx1)
+
+    # x[x < 0.0] = 0.0 # NOTE Uncomment if needed
     return x
 
 

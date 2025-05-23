@@ -45,6 +45,7 @@ def nesterov(
     F = F.astype(FLOAT_DTYPE)
     x0 = x0.astype(FLOAT_DTYPE)
 
+    # Variables
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)  # TODO check this
@@ -70,18 +71,17 @@ def nesterov(
 @nb.njit
 def _nesterov(R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd) -> np.ndarray:
 
-    # Initialize variables:
+    # Variables
     n = x0.shape[0]
     y = np.zeros(n)
     x = np.copy(x0)
     v = np.copy(x0)
-
     theta = 1.0
     fy = 0.0
     lr_ = lr(R)
     V = None
 
-    # Singular Value Decomposition:
+    # Singular Value Decomposition
     if svd:
         R, F, x0, V = svd_optim(R, F, x0)
 
@@ -89,7 +89,7 @@ def _nesterov(R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd) -> np.ndarra
     if protocol:
         print("Step", "Error")
 
-    # Subroutine implementation:
+    # Subroutine:
     for k in range(maxiter):
         # Update momentum
         theta = 2 / (k + 2)
@@ -113,7 +113,8 @@ def _nesterov(R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd) -> np.ndarra
         #  even if the solution is close to the minimum of the objective function.)
         fy1 = f(y, R, F)
         if k > 0 and np.abs(fy - fy1) < tol:
-            print("Converged by tolerance.")
+            if protocol:
+                print("Converged by tolerance")
             break
         fy = fy1
 
@@ -127,5 +128,4 @@ def _nesterov(R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd) -> np.ndarra
         if protocol:
             print(k + 1, fy1)
 
-    print("Converged by maximum iterations.")
     return y if V is None else V @ y

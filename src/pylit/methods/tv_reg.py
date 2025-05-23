@@ -9,10 +9,6 @@ from pylit.settings import (
     INT_DTYPE,
     FASTMATH,
 )
-from pylit.njit_utils import (
-    jit_sub_mat_by_index_set,
-    jit_sub_vec_by_index_set,
-)
 
 # Filter out NumbaPerformanceWarning
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -140,20 +136,19 @@ def _tv_reg(E, lambd) -> Method:
 
     @njit(fastmath=FASTMATH)
     def solution(R, F, P) -> np.ndarray:
+        # TODO Not sure if this is correct yet ...
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
         n, m = R.shape
-        E_ = E[:, :m]
-        V_E = FD @ E_
+        E_R = E[:, :m]
+        V_E_R = FD @ E_R
 
         # np.ix_ unsupported in numba
-
-        A = R.T @ R / n + lambd * V_E.T @ V_E
-        A = jit_sub_mat_by_index_set(A, P)
-
-        b = R.T @ F
-        b = jit_sub_vec_by_index_set(b, P)
+        R_P = R[:, P]
+        V_E_P = V_E_R[:, P]
+        A = R_P.T @ R_P / n + lambd * V_E_P.T @ V_E_P
+        b = R_P.T @ F
 
         return np.asarray(np.linalg.solve(A, b)).astype(FLOAT_DTYPE)
 
