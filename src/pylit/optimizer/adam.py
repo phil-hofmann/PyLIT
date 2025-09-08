@@ -16,18 +16,60 @@ def adam(
     svd: bool = False,
     protocol: bool = False,
 ) -> Solution:
-    """Solves the optimization problem using the ADAM gradient method."""
+    r"""
+    This is the ADAM optimization method. 
+    `The interface is described in` :ref:`Optimizer <optimizer>`.
 
-    # Type Conversion
+    Description
+    -----------
+    Solves the optimization problem :eq:`(*) <lsq-problem>` using the ADAM 
+    (A Method for Stochastic Optimization) gradient method with non-negativity constraint.
+    ADAM is a first-order stochastic optimization algorithm that adapts the learning
+    rates for each variable individually by maintaining exponentially decaying averages
+    of past gradients (first moment) and squared gradients (second moment). This 
+    stabilizes convergence and is well-suited for problems with noisy, sparse, or 
+    non-stationary gradients.
+
+    Algorithm
+    ---------
+    Let :math:`\beta_1` and :math:`\beta_2` be the decay rates for the first and
+    second moment estimates, and :math:`\epsilon` a small constant for numerical
+    stability. At iteration :math:`k`, the updates are:
+
+    .. math::
+
+        m_k &= \beta_1 m_{k-1} + (1-\beta_1) \nabla f(x_{k-1}) \\
+        v_k &= \beta_2 v_{k-1} + (1-\beta_2) (\nabla f(x_{k-1}))^2 \\
+        \hat{m}_k &= \frac{m_k}{1 - \beta_1^k} \\
+        \hat{v}_k &= \frac{v_k}{1 - \beta_2^k} \\
+        x_k &= x_{k-1} - \eta \frac{\hat{m}_k}{\sqrt{\hat{v}_k} + \epsilon}
+    
+    The algorithm terminates when the change in the objective function between
+    successive iterates falls below the tolerance ``tol`` or when the maximum
+    number of iterations ``maxiter`` is reached.
+
+    Returns
+    -------
+    Solution
+        A Solution object containing the final iterate.
+
+    References
+    ----------
+        - D. P. Kingma and J. Ba. *Adam: A Method for Stochastic Optimization*. 
+        International Conference on Learning Representations (ICLR), 2015.
+    """
+
+    # Convert types
     R = R.astype(FLOAT_DTYPE)
     F = F.astype(FLOAT_DTYPE)
     x0 = x0.astype(FLOAT_DTYPE)
 
+    # Handle defaults
     n, m = R.shape
     maxiter = 10 * n if maxiter is None else INT_DTYPE(maxiter)
     tol = 10 * max(m, n) * TOL if tol is None else FLOAT_DTYPE(tol)
 
-    # Subroutine
+    # Call Subroutine
     x = _nn_adam(
         R,
         F,
@@ -40,6 +82,8 @@ def adam(
         protocol,
         svd,
     )
+
+    # Compute objective
     fx = method.f(x, R, F)
 
     return Solution(x, fx, FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2)))
@@ -59,13 +103,12 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd) -> np.ndarray
     fx = 0.0
     lr_ = lr(R)
     V = None
-    eps_tol = 0.0
 
-    # Singular Value Decomposition
+    # Perform svd
     if svd:
         R, F, x0, V = svd_optim(R, F, x0)
 
-    # Print header for protocol
+    # Print header
     if protocol:
         print("Step", "Error")
 
@@ -100,5 +143,5 @@ def _nn_adam(R, F, f, grad_f, lr, x0, maxiter, tol, protocol, svd) -> np.ndarray
         # Print protocol
         if protocol:
             print(k + 1, fx1)
-            
+
     return x if V is None else V @ x

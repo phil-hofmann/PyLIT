@@ -1,5 +1,4 @@
 import numpy as np
-import numba as nb
 
 from pylit.core.data_classes import Solution
 from pylit.settings import INT_DTYPE, FLOAT_DTYPE
@@ -13,7 +12,72 @@ def adaptiveRF(
     optim_RFx0: callable,
     residuum_mode: bool = False,
 ) -> Solution:
-    """Solves the optimization problem adaptively."""
+    r"""
+    This is a wrapper for optimization methods. 
+
+    Description
+    -----------
+    Solves the optimization problem :eq:`(*) <lsq-problem>` using an adaptive
+    incremental wrapper around a given optimization method. This method partitions the 
+    parameter space into blocks of size ``steps`` and applies the provided optimizer
+    ``optim_RFx0`` sequentially to increasingly larger subsets of features.
+    After each block, the solution is updated based on either the residuum or 
+    the objective error (epsilon). This ensures that the optimization focuses
+    on the most relevant features first and improves convergence second.
+
+    Algorithm
+    ---------
+    Let :math:`n` be the number of columns of :math:`R` and ``steps`` the block
+    size. The algorithm proceeds as follows:
+
+    **A. Initialization**
+        - Verify that ``steps`` divides the number of columns of :math:`R`.
+        - Initialize empty feature set and solution placeholders.
+
+    **B. Iterative Block Optimization**
+        - For each block of ``steps`` features:
+            - Append the new block to the current feature set.
+            - Run the optimizer ``optim_RFx0`` on the reduced regression problem.
+            - Evaluate the solution using either the residuum or epsilon.
+            - If the new solution improves the selected metric, update the
+              current solution and feature set.
+
+    **C. Final Assembly**
+        - Construct the final solution vector by inserting optimized values at
+          their corresponding indices.
+
+    The procedure terminates when all feature blocks have been processed. The
+    final solution corresponds to the block configuration yielding the minimal
+    residuum or epsilon, depending on ``residuum_mode``.
+
+    Parameters
+    ----------
+    R : np.ndarray
+        Regression matrix of shape ``(m, n)``.
+    F : np.ndarray
+        Target vector of shape ``(m,)``.
+    x0 : np.ndarray
+        Initial guess for the solution, shape ``(n,)``.
+    steps : INT_DTYPE
+        Block size for adaptive optimization. Must be positive and divide ``n``.
+    optim_RFx0 : callable
+        Optimization function with signature ``optim_RFx0(R, F, x0)`` returning
+        a ``Solution`` object.
+    residuum_mode : bool, optional
+        If ``True``, the selection of the best solution is based on residuum.
+        Otherwise, the epsilon value is used. Default is ``False``.
+
+    Returns
+    -------
+    Solution
+        A ``Solution`` object containing the final iterate, epsilon, and residuum.
+
+    Notes
+    -----
+        - This adaptive wrapper is particularly useful for high-dimensional
+          regression problems where a full optimization may be inefficient.
+        - The truncation of ``x0`` as initial guess for blocks may not be optimal.
+    """
 
     # Type Conversion
     R = R.astype(FLOAT_DTYPE)
@@ -34,7 +98,6 @@ def adaptiveRF(
 
 
 # NOTE The truncation of x0 as initial guess is not optimal ...
-# @nb.njit # NOTE: Not possible because optim_RFx0 is not a numba function
 def _adaptiveRF(
     R,
     F,
