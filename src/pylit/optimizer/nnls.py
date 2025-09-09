@@ -67,8 +67,7 @@ def nnls(
 
     References
     ----------
-        - Rasmus Bro, Sijmen De Jong. *A Fast Non-Negativity-Constrained Least Squares Algorithm*. 
-        Journal of Chemometrics, Vol. 11, pp. 393–401, 1997.
+        - Rasmus Bro, Sijmen De Jong. *A Fast Non-Negativity-Constrained Least Squares Algorithm*. Journal of Chemometrics, Vol. 11, pp. 393–401, 1997.
     """
 
     # Convert types

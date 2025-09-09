@@ -58,8 +58,7 @@ def nesterov(
 
     References
     ----------
-        - Y. Nesterov. *Gradient methods for minimizing composite functions*. 
-        Mathematical Programming, 140(1), 125–161, 2012.  
+        - Y. Nesterov. *Gradient methods for minimizing composite functions*. Mathematical Programming, 140(1), 125–161, 2012.  
     """
 
     # Convert types

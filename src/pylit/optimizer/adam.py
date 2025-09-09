@@ -55,8 +55,7 @@ def adam(
 
     References
     ----------
-        - D. P. Kingma and J. Ba. *Adam: A Method for Stochastic Optimization*. 
-        International Conference on Learning Representations (ICLR), 2015.
+        - D. P. Kingma and J. Ba. *Adam: A Method for Stochastic Optimization*. International Conference on Learning Representations (ICLR), 2015.
     """
 
     # Convert types

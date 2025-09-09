@@ -36,16 +36,13 @@ exclude_patterns = []
 html_theme = "furo"
 html_static_path = ["_static"]
 html_logo = "logo.png"
-# This appears as the main title
 html_title = " "
-
-# This appears as a subheading under the logo
 html_theme_options = {
-    "sidebar_hide_name": False,  # show project name/subtitle
-    "announcement": "v.0.2",  # optional announcement banner
+    "sidebar_hide_name": False,
+    "announcement": "v.0.2",
 }
-
-# For Furo specifically, you can also set:
-html_theme_options.update({
-    "navigation_with_keys": True,  # optional
-})
+html_theme_options.update(
+    {
+        "navigation_with_keys": True,
+    }
+)
