@@ -3,31 +3,40 @@ import numpy as np
 from pylit.settings import FLOAT_DTYPE
 from pylit.utils import diff_interval
 
-"""Module for scaling and rescaling of Laplace transforms for (all kinds of) models."""
-
-
 class LinearScaling:
 
-    def __init__(self, tau: np.ndarray, beta: float) -> None:
-        """Initialize the LinearScaling.
+    def __init__(self, tau: np.ndarray) -> None:
+        r"""Base class for linear scaling of Laplace/inverse Laplace transforms.
 
-        This is a parent class which is used to compute the scaling for Laplace transforms.
+        This class sets up a diffeomorphism :math:`\psi`, which maps the time axis 
+        :math:`\tau` from the interval :math:`[\tau_0, \tau_1]` to :math:`[0, 1]`.
 
-        Parameters:
-            tau : ARRAY
-                The nodes tau.
-            beta : FLOAT
-                The new right end point of the nodes tau.
+        Parameters
+        ----------
+        tau : np.ndarray
+            The discretised time axis :math:`\tau`. Must be a
+            one-dimensional array. The right endpoint ``tau1`` is
+            taken as :math:`\max \tau`.
 
-        Raises:
-            ValueError
-                If the grid points are not given.
-                If the grid points are not one-dimensional.
-                If the left end point is greater or equal to the right end point."""
+        Raises
+        ------
+        ValueError
+            If the nodes are not one-dimensional.
+            If the right endpoint is not strictly positive.
+
+        Attributes
+        ----------
+        tau0 : float
+            Left endpoint of the interval is always :math:`0.0`.
+        tau1 : float
+            Right endpoint of the interval is always :math:`\max \tau`.
+        psy : callable
+            The diffeomorphism mapping the interval ``[tau0, tau1]`` onto ``[0, tau1]``.
+        """
 
         # Type Conversion
         tau = np.asarray(tau).astype(FLOAT_DTYPE)
-        beta = float(beta)
+        beta = float(np.max(tau))
 
         # Integrity
         if not tau.ndim == 1:
@@ -35,8 +44,8 @@ class LinearScaling:
         if beta <= 0:
             raise ValueError("The right end point must be strictly positive.")
 
-        # Compute tau1 and tau0 - scaling endpoints
-        self._tau1 = np.max(tau) # TODO change to beta ...
+        # Scaling endpoints
+        self._tau1 = beta
         self._tau0 = 0.0
 
         # Compute the diffeomorphism of the interval
@@ -68,23 +77,41 @@ class LinearScaling:
         raise PermissionError("The psy parameter is read-only.")
 
 
-class ForwardLinearScaling(LinearScaling):
+class TauLinearScaling(LinearScaling):
 
-    def __init__(self, tau: np.ndarray, beta: float) -> None:
-        """Initialize the Forward Scaling."""
+    def __init__(self, tau: np.ndarray) -> None:
+        """Initialize the TauLinearScaling by means of its superclass."""
 
-        super().__init__(tau, beta)
+        super().__init__(tau)
 
     def __call__(self, func):
-        """Returns the scaled version of the given Laplace transform.
+        r"""Apply linear scaling to a Laplace transform.
 
-        Parameters:
-            func : callable
-                The Laplace transform.
+        Given a Laplace transform :math:`F(\tau)`, this decorator
+        scales the time axis using the diffeomorphism :math:`\psi`:
 
-        Returns:
-            callable
-                The scaled Laplace transform.
+        .. math::
+
+            F_{\text{scaled}}(\tau) = F(\psi(\tau))
+
+        Parameters
+        ----------
+        func : callable
+            A Laplace transformed function :math:`F(\tau)`.
+
+        Returns
+        -------
+        callable
+            The scaled Laplace transform :math:`F_{\text{scaled}}(\tau)`.
+
+        Example
+        -------
+        >>> import numpy as np
+        >>> def f(tau): return np.exp(-tau)
+        >>> scale = TauLinearScaling(tau=np.linspace(0, 8, 20))
+        >>> scaled_f = scale(f)
+        >>> scaled_f(0.5)
+        np.exp(-scale.psy(0.5))
         """
 
         def wrapper(tau: np.ndarray, *args, **kwargs):
@@ -93,23 +120,46 @@ class ForwardLinearScaling(LinearScaling):
         return wrapper
 
 
-class InverseLinearRescaling(LinearScaling):
+class OmegaLinearScaling(LinearScaling):
 
-    def __init__(self, tau: np.ndarray, beta: float) -> None:
-        """Initialize the Inverse Rescaling."""
+    def __init__(self, tau: np.ndarray) -> None:
+        """Initialize the OmegaLinearScaling by means of its superclass."""
 
-        super().__init__(tau, beta)
+        super().__init__(tau)
 
     def __call__(self, func):
-        """Returns the rescaled version of the given inverse Laplace transform.
+        r"""Apply linear scaling to a model function.
 
-        Parameters:
-            func : callable
-                The inverse Laplace transform.
+        Given a model function :math:`f(\omega)`, this
+        decorator scales both the frequency variable and amplitude:
 
-        Returns:
-            callable
-                The rescaled inverse Laplace transform.
+        .. math::
+
+            S_{\text{scaled}}(\omega)
+            = (\tau_1 - \tau_0)\, e^{\tau_0 \omega}\,
+              S\big((\tau_1 - \tau_0)\, \omega\big)
+
+        where :math:`[\tau_0, \tau_1]` is the original time interval.
+
+
+        Parameters
+        ----------
+        func : callable
+            A model function :math:`S(\omega)`.
+
+        Returns
+        -------
+        callable
+            The scaled model function :math:`S_{\text{scaled}}(\omega)`.
+
+        Example
+        -------
+        >>> import numpy as np
+        >>> def S(omega): return np.exp(-omega**2)
+        >>> scale = OmegaLinearScaling(tau=np.linspace(0, 8, 20))
+        >>> scaled_S = scale(S)
+        >>> scaled_S(0.5)
+        (scale.tau1 - scale.tau0) * np.exp(scale.tau0 * 0.5) * S((scale.tau1 - scale.tau0) * 0.5)
         """
 
         def wrapper(omega: np.ndarray, *args, **kwargs):

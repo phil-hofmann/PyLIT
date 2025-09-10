@@ -1,59 +1,53 @@
 from pylit.models.lrm import LinearRegressionModel
-from pylit.core.linear_scaling import ForwardLinearScaling, InverseLinearRescaling
-from pylit.core.detailed_balance import ForwardDetailedBalance, InverseDetailedBalance
+from pylit.core.linear_scaling import TauLinearScaling, OmegaLinearScaling
+from pylit.core.detailed_balance import TauDetailedBalance, OmegaDetailedBalance
 
 
 def linear_scaling_decorator(
     lrm: LinearRegressionModel,
-    beta: float,
 ) -> LinearRegressionModel:
-    """Decorator for the Linear Regression Model.
+    r"""Decorator for the Linear Regression Model.
 
-    This decorator is used to scale the Linear Regression Model with given right end point.
+    This decorator is used to scale the time axis to [0,1].
 
-    Parameters:
-        lrm : LinearRegressionModel
-            The  linear regression model.
-        beta : float
-            The new right end point of the nodes tau.
+    Parameters
+    ----------
+    lrm : LinearRegressionModel
+        The  linear regression model.
 
-    Returns:
-        LinearRegressionModel:
-            The scaled linear regression model.
+    Returns
+    -------
+    LinearRegressionModel:
+        The scaled linear regression model.
     """
 
-    # Apply the scaling decorators to the regression matrix
-    lrm.kernel = InverseLinearRescaling(lrm.tau, beta)(lrm.kernel)
-
-    # Apply the scaling decorators to the regression matrix
-    lrm.ltransform = ForwardLinearScaling(lrm.tau, beta)(lrm.ltransform)
+    # Apply the scaling decorators
+    lrm.kernel = TauLinearScaling(lrm.tau)(lrm.kernel)
+    lrm.ltransform = OmegaLinearScaling(lrm.tau)(lrm.ltransform)
 
     return lrm
 
 
 def detailed_balance_decorator(
     lrm: LinearRegressionModel,
-    beta: float,
 ) -> LinearRegressionModel:
-    """Decorator for the Linear Regression Model.
+    r"""Decorator for the LinearRegressionModel.
 
-    This decorator is used to apply the detailed balance to the Linear Regression Model.
+    This decorator is used to apply the detailed balance.
 
-    Parameters:
-        lrm : LinearRegressionModel
-            The  linear regression model.
-        beta : float
-            The new parameter beta for the detailed balance.
+    Parameters
+    ----------
+    lrm : LinearRegressionModel
+        The  linear regression model.
 
-    Returns:
-        LinearRegressionModel:
-            The detailed balanced linear regression model.
+    Returns
+    -------
+    LinearRegressionModel:
+        The detailed balanced linear regression model.
     """
 
-    # Apply the scaling decorators to the regression matrix
-    lrm.kernel = InverseDetailedBalance(lrm.tau)(lrm.kernel)
-
-    # Apply the scaling decorators to the regression matrix
-    lrm.ltransform = ForwardDetailedBalance(lrm.tau)(lrm.ltransform)
+    # Apply the detailed balance decorators
+    lrm.kernel = OmegaDetailedBalance(lrm.tau)(lrm.kernel)
+    lrm.ltransform = TauDetailedBalance(lrm.tau)(lrm.ltransform)
 
     return lrm

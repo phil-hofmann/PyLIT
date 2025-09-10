@@ -1,23 +1,27 @@
 import numpy as np
 from pylit.settings import FLOAT_DTYPE
 
-"""Module for applying detailed balance to models."""
-
 
 class DetailedBalance:
 
+    r"""Base class for detailed balance computations.
+
+    This class stores the scaling parameter :math:`\beta`, defined as the
+    maximum of the provided time axis :math:`\tau`."""
+
     def __init__(self, tau: np.ndarray) -> None:
-        """Initialize the DetailedBalance.
+        """Initialize the DetailedBalance class.
 
-        This is a parent class which is used to compute the detailed balance.
+        Parameters
+        ----------
+        tau : np.ndarray
+            The time axis.
 
-        Parameters:
-            tau : np.ndarray
-                The time scale parameter.
-
-        Raises:
-            ValueError
-                If the beta is not positive."""
+        Raises
+        ------
+        ValueError
+            If the beta is not positive.
+        """
 
         # Type Conversion
         tau = np.asarray(tau).astype(FLOAT_DTYPE)
@@ -38,23 +42,44 @@ class DetailedBalance:
         raise PermissionError("The beta parameter is read-only.")
 
 
-class ForwardDetailedBalance(DetailedBalance):
+class TauDetailedBalance(DetailedBalance):
 
     def __init__(self, tau: np.ndarray) -> None:
-        """Initialize the Forward Detailed Balance."""
+        """Initialize the TauDetailedBalance by means of its superclass."""
 
         super().__init__(tau)
 
     def __call__(self, func):
-        """Returns the scaled version of the given Laplace transform.
+        r"""
+        Apply detailed balance to a Laplace transform.
 
-        Parameters:
-            func : callable
-                The Laplace transform.
+        Given a Laplace transform :math:`F(\tau)`, this decorator returns a
+        symmetrized version of the function:
 
-        Returns:
-            callable
-                The scaled Laplace transform.
+        .. math::
+
+            F_{DB}(\tau) = F(\beta - \tau) + F(\tau)
+
+        where :math:`\beta = \max \tau`.
+
+        Parameters
+        ----------
+        func : callable
+            A Laplace transform :math:`F(\tau)`.
+
+        Returns
+        -------
+        callable
+            The detailed balanced Laplace transform.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> def f(tau): return np.exp(-tau)
+        >>> db = ForwardDetailedBalance(tau=np.array([2.0]))
+        >>> balanced = db(f)
+        >>> balanced(0.5)
+        np.exp(-0.5) + np.exp(-(2.0 - 0.5))
         """
 
         def wrapper(tau: np.ndarray, *args, **kwargs):
@@ -63,23 +88,43 @@ class ForwardDetailedBalance(DetailedBalance):
         return wrapper
 
 
-class InverseDetailedBalance(DetailedBalance):
+class OmegaDetailedBalance(DetailedBalance):
 
     def __init__(self, tau: np.ndarray) -> None:
-        """Initialize the Inverse Detailed Balance."""
+        """Initialize the OmegaDetailedBalance by means of its superclass."""
 
         super().__init__(tau)
 
     def __call__(self, func):
-        """Returns the rescaled version of the given inverse Laplace transform.
+        r"""Apply detailed balance to a kernel function.
 
-        Parameters:
-            func : callable
-                The inverse Laplace transform.
+        Given a kernel function :math:`S(\omega)`, this decorator
+        rescales it as:
 
-        Returns:
-            callable
-                The rescaled inverse Laplace transform.
+        .. math::
+
+            S_{DB}(\omega) = e^{\beta \omega} S(-\omega) + S(\omega)
+
+        where :math:`\beta = \max \tau`.
+
+        Parameters
+        ----------
+        func : callable
+            An kernel function :math:`S(\omega)`.
+
+        Returns
+        -------
+        callable
+            The kernel function fulfilling the detailed balance with respect to :math:`\beta`
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> def S(omega): return np.exp(-omega**2)
+        >>> db = InverseDetailedBalance(tau=np.array([1.0]))
+        >>> balanced = db(S)
+        >>> balanced(0.5)
+        np.exp(1.0 * 0.5) * np.exp(-(-0.5)**2) + np.exp(-(0.5)**2)
         """
 
         def wrapper(omega: np.ndarray, *args, **kwargs):

@@ -136,11 +136,11 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     # Regression Matrix
     if config.tau_scaling is not None:
-        model = linear_scaling_decorator(lrm=model, beta=config.tau_scaling)
+        model = linear_scaling_decorator(lrm=model)
     if config.detailed_balance is not None and config.tau_scaling is not None:
-        model = detailed_balance_decorator(lrm=model, beta=config.tau_scaling)
+        model = detailed_balance_decorator(lrm=model)
     elif config.detailed_balance is not None:
-        model = detailed_balance_decorator(lrm=model, beta=prep.beta)
+        model = detailed_balance_decorator(lrm=model)
     model.compute_regression_matrix()
 
     # Method Arguments
