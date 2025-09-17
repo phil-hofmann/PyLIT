@@ -15,6 +15,56 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 
 def var_reg(omegas: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
+    r"""
+    This is the variance regularization method. `The interface is described in` :ref:`Methods <methods>`.
+
+    The objective function
+
+    .. math::
+
+
+    is implemented as
+
+    .. math::
+
+        f(\boldsymbol{\alpha}) =
+        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2
+        + \frac{1}{2} \lambda \, \mathrm{Var}_{\boldsymbol{p}}[\boldsymbol{\omega}], \quad \boldsymbol{p} = E \boldsymbol{\alpha},
+
+    with the gradient
+
+    .. math::
+
+        \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
+        \frac{1}{n} \boldsymbol{R}^\top (\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F})
+        + \lambda \, (\mathbb{E}_{\boldsymbol{p}}[\boldsymbol{\omega}] - \bar{\omega}),
+        \, E^\top \boldsymbol{\omega},
+
+    the learning rate
+
+    .. math::
+
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + (\lambda n / k^2) \, \| \boldsymbol{E} \boldsymbol{\omega} \| \|\boldsymbol{E}\| \|\boldsymbol{\omega}\|}
+
+    and the solution
+
+    .. math::
+
+        \textit{Solution not available.}
+
+    where
+
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{\omega}`: discrete frequency vector,
+    - :math:`k`: length of the discrete frequency vector.
+    - :math:`\bar{\omega}`: Mean of the discrete frequency vector :math:`\boldsymbol{\omega}`,
+    - :math:`E`: Evaluation matrix,
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
+    """
+
     # Type Conversion
     omegas = np.asarray(omegas).astype(FLOAT_DTYPE)
     E = np.asarray(E).astype(FLOAT_DTYPE)

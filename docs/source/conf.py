@@ -33,16 +33,34 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
+html_css_files = [
+    "css/custom.css",
+]
 html_logo = "logo.png"
-html_title = " "
+html_title = ""
 html_theme_options = {
-    "sidebar_hide_name": False,
-    "announcement": "v.0.2",
+    "logo": {
+        "text": "",
+    },
+    "navbar_end": ["navbar-icon-links"],
+     "secondary_sidebar_items": ["page-toc"],
+    "navbar_align": "content",
+    "show_prev_next": False,
+    "announcement": "v0.2",
+    
 }
 html_theme_options.update(
     {
-        "navigation_with_keys": True,
+        "icon_links": [
+            {
+                "name": "GitHub",
+                "url": "https://github.com/phil-hofmann/pylit",
+                "icon": "fa-brands fa-github",
+            }
+        ],
+        "use_edit_page_button": False,
+        "navigation_depth": 4,
     }
 )

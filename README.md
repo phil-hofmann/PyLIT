@@ -17,19 +17,12 @@ The project is licensed under the [MIT License](LICENSE.txt).
 - [Phil-Alexander Hofmann](https://github.com/philippocalippo/)
 - [Alexander Benedix Robles](https://github.com/alexanderbenedix/)
 - [Thomas Chuna](https://github.com/chunatho)
-
-## 🙏 Acknowledgments
-
-We would like to acknowledge:
-
 - [Dr. Tobias Dornheim](https://www.casus.science/de-de/team-members/dr-tobias-dornheim/) - [CASUS](https://www.casus.science/) ([HZDR](https://www.hzdr.de/)),
 - [Prof. Dr. Michael Hecht](https://www.casus.science/de-de/team-members/michael-hecht/) - [CASUS](https://www.casus.science/) ([HZDR](https://www.hzdr.de/)),
 
-and the support and resources provided by the [Center for Advanced Systems Understanding](https://www.casus.science/) ([Helmholtz-Zentrum Dreden-Rossendorf](https://www.hzdr.de/)) where the development of this project took place.
 
-## 📝 Remarks
+We would like to acknowledge the support and resources provided by the [Center for Advanced Systems Understanding](https://www.casus.science/) ([Helmholtz-Zentrum Dreden-Rossendorf](https://www.hzdr.de/)) where the development of this project took place.
 
-This project originated from a prototype developed by Alexander Benedix Robles. His initial work laid the foundation for the current implementation.
 
 ## ⚙️ Example Usage
 

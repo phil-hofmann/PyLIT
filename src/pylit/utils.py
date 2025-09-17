@@ -3,10 +3,8 @@ import json
 import inspect
 import numpy as np
 
-from pylit import models
 from pathlib import Path
 from typing import Tuple, List
-from scipy.optimize import nnls
 from pylit.settings import FLOAT_DTYPE
 
 
@@ -240,132 +238,37 @@ def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, calla
     return psy, psy_inv
 
 
-def y_tol_fit(
-    D: np.ndarray, omega: np.ndarray, tol: float = 0.95
-) -> Tuple[float, float]:
-    """
-    Computes the threshold ω at a certain tolerance level.
-
+def find_zero(array: np.ndarray) -> int:
+    """Finds the index where the sign flips from negative to positive.
+    
     Args:
-        D: np.ndarray
-            The target values.
-        omega: np.ndarray
-            The support points.
-        tol: float
-            The tolerance level. (0 < tol <= 1)
-
+        array:
+            One-dimensional array of values.
     Returns:
-        omega: float
-            The threshold value ω.
-    """
-
-    I = np.trapezoid(D, omega)
-
-    for i in range(len(omega)):
-        T_I = np.trapezoid(D[:i], omega[:i])
-        if T_I / I >= np.abs(1.0 - tol):
-            return omega[i]
-            print(w[i])
+        Index `i+1` such that arr[i] < 0 and arr[i+1] >= 0. Returns None if no flip is found."""
+    for i in range(len(array) - 1):
+        if array[i] < 0 and array[i + 1] >= 0:
+            return i+1
     return None
 
 
-def _width_start_values(
-    omega: np.ndarray,
-    D: np.ndarray,
-) -> Tuple[float, float]:
+def find_max_cutoff(array: np.ndarray, cutoff: float):
     """
-    Initialise start values for the kernel widths.
+    Find the first index after the global maximum where the array falls below a cutoff.
 
     Args:
-        omega: np.ndarray
-            The support points.
-        D: np.ndarray
-            The target values.
+        array:
+            One-dimensional array of values.
+        cutoff:
+            Threshold value.
 
     Returns:
-        Tuple[float, float]
-            The lower and upper bounds of the kernel widths.
+        Index of the first element smaller than the ``cutoff`` when scanning
+        forward from the global maximum. If no such element is found,
+        returns None.
     """
-    e = np.trapezoid(omega * D, omega)
-    var = np.trapezoid((omega - e) ** 2 * D, omega)
-    sigma = np.sqrt(var)
-    return 0.0001 * sigma, sigma  # TODO Unclear why these values are chosen
-
-
-def fat_tol_fit(
-    omega: np.ndarray,
-    D: np.ndarray,
-    mu: np.ndarray,
-    model_name: str,
-    tol: float,
-    widths: int,
-    window: int,
-) -> np.ndarray:
-    """
-    Finds the best kernel widths, in order to fit the data.
-
-    Args:
-        omega: np.ndarray
-            The support points.
-        D: np.ndarray
-            The target values.
-        mu: np.ndarray
-            The support points for the model.
-        tol: float
-            The tolerance level.
-        widths: int
-            The total number of kernel widths.
-        window: int
-            The window size when searching for the best kernel widths.
-
-    Returns:
-        np.ndarray
-            The best kernel widths under the given specifications.
-    """
-
-    n_mu, idx_peak = len(mu), np.argmax(D)
-    peak_val = D[idx_peak]
-    sigma_lower, sigma_upper = _width_start_values(omega, D)
-    sigma = np.logspace(np.log10(sigma_lower), np.log10(sigma_upper), widths)[::-1]
-    ModelClass = getattr(models, model_name)
-    model = ModelClass(np.array([], dtype=FLOAT_DTYPE), mu, sigma)
-    E = np.array(
-        [
-            model.kernel(omega, param=[model.params[0][mi[0]], model.params[1][mi[1]]])
-            for mi in model.multi_index_set
-        ],
-        dtype=FLOAT_DTYPE,
-    ).T
-    best_sigma = None
-    for i in range(len(sigma) - 2):
-        _sigma = sigma[i : i + window]
-        l, r = i * n_mu, (i + window) * n_mu
-        _E = E[:, l:r]
-        _c, _ = nnls(_E, D)
-        _D = _E @ _c
-
-        if _D[idx_peak] == 0:
-            continue
-        _peak_val = _D[idx_peak]
-        _eps = np.max(np.abs(_peak_val - peak_val)) / peak_val
-        if _eps <= np.abs(1.0 - tol):
-            best_sigma = np.copy(_sigma)
-            break
-
-    if best_sigma is None:
-        raise ValueError("Keine Sigmas erfüllen die Toleranzanforderung.")
-    return best_sigma
-
-
-if __name__ == "__main__":
-    print(
-        fat_tol_fit(
-            np.array([1, 2, 3, 4, 5], dtype=FLOAT_DTYPE),
-            np.array([1, 2, 3, 4, 5], dtype=FLOAT_DTYPE),
-            np.array([1, 2, 3, 4, 5], dtype=FLOAT_DTYPE),
-            "Gauss",
-            0.9,
-            5,
-            2,
-        )
-    )
+    i_start = np.argmax(array)
+    for i in range(i_start, len(array)):
+        if (array[i] < cutoff):
+            return i
+    return None

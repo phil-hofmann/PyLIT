@@ -7,20 +7,25 @@ if __name__ == "__main__":
     path_F = Path("/Users/philhofmann/Documents/pylit-workspace/data/raw_F/F10.csv")
     path_D = Path("/Users/philhofmann/Documents/pylit-workspace/data/raw_S/S10.csv")
 
-    lambdas = np.array([10e-10], dtype=np.float64)
+    path_S = Path("/Users/philhofmann/Downloads/my_S.csv")
+    path_L_S = Path("/Users/philhofmann/Downloads/my_L_S.csv")
+
+    lambdas = np.array([10e-4], dtype=np.float64)
 
     config = Configuration(
         path_F=path_F,
         path_D=path_D,
+        path_S=path_S,
+        path_L_S=path_L_S,
         adaptive=False,
-        optimizer_name="nesterov",
+        optimizer_name="adam",
         method_name="l2_fit",
         lambd=lambdas,
         maxiter=1_000,
         detailed_balance=True,
-        model_name="Gauss", # NOTE Cauchy ...
+        model_name="Gauss",
         protocol=True,
-        tol=10e-20,
+        tol=10e-10,
     )
     prep = prepare(config)
     res = itransform(config, prep)

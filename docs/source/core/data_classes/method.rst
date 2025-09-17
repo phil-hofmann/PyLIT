@@ -1,7 +1,8 @@
+.. _method:
+
 Method
 ======
 
-.. automodule:: pylit.core.data_classes
-   :members: Method
+.. autoclass:: pylit.core.data_classes.Method
    :undoc-members:
    :show-inheritance:

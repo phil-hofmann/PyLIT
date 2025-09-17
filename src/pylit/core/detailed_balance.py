@@ -6,21 +6,18 @@ class DetailedBalance:
 
     r"""Base class for detailed balance computations.
 
-    This class stores the scaling parameter :math:`\beta`, defined as the
+    This class stores the inverse temperature parameter :math:`\beta`, given as the
     maximum of the provided time axis :math:`\tau`."""
 
     def __init__(self, tau: np.ndarray) -> None:
         """Initialize the DetailedBalance class.
 
-        Parameters
-        ----------
-        tau : np.ndarray
-            The time axis.
+        Args:
+            tau:
+                The time axis.
 
-        Raises
-        ------
-        ValueError
-            If the beta is not positive.
+        Raises:
+            ValueError:If the beta is not positive.
         """
 
         # Type Conversion
@@ -35,6 +32,7 @@ class DetailedBalance:
 
     @property
     def beta(self) -> float:
+        """Inverse temperature parameter."""
         return self._beta
 
     @beta.setter
@@ -62,24 +60,20 @@ class TauDetailedBalance(DetailedBalance):
 
         where :math:`\beta = \max \tau`.
 
-        Parameters
-        ----------
-        func : callable
-            A Laplace transform :math:`F(\tau)`.
+        Args:
+            func:
+                A Laplace transform :math:`F(\tau)`.
 
-        Returns
-        -------
-        callable
+        Returns:
             The detailed balanced Laplace transform.
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> def f(tau): return np.exp(-tau)
-        >>> db = ForwardDetailedBalance(tau=np.array([2.0]))
-        >>> balanced = db(f)
-        >>> balanced(0.5)
-        np.exp(-0.5) + np.exp(-(2.0 - 0.5))
+        Examples:
+            >>> import numpy as np
+            >>> def f(tau): return np.exp(-tau)
+            >>> db = ForwardDetailedBalance(tau=np.array([2.0]))
+            >>> balanced = db(f)
+            >>> balanced(0.5)
+            np.exp(-0.5) + np.exp(-(2.0 - 0.5))
         """
 
         def wrapper(tau: np.ndarray, *args, **kwargs):
@@ -107,24 +101,20 @@ class OmegaDetailedBalance(DetailedBalance):
 
         where :math:`\beta = \max \tau`.
 
-        Parameters
-        ----------
-        func : callable
-            An kernel function :math:`S(\omega)`.
+        Args:
+            func:
+                An kernel function :math:`S(\omega)`.
 
-        Returns
-        -------
-        callable
+        Returns:
             The kernel function fulfilling the detailed balance with respect to :math:`\beta`
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> def S(omega): return np.exp(-omega**2)
-        >>> db = InverseDetailedBalance(tau=np.array([1.0]))
-        >>> balanced = db(S)
-        >>> balanced(0.5)
-        np.exp(1.0 * 0.5) * np.exp(-(-0.5)**2) + np.exp(-(0.5)**2)
+        Examples:
+            >>> import numpy as np
+            >>> def S(omega): return np.exp(-omega**2)
+            >>> db = InverseDetailedBalance(tau=np.array([1.0]))
+            >>> balanced = db(S)
+            >>> balanced(0.5)
+            np.exp(1.0 * 0.5) * np.exp(-(-0.5)**2) + np.exp(-(0.5)**2)
         """
 
         def wrapper(omega: np.ndarray, *args, **kwargs):

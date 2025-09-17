@@ -48,13 +48,10 @@ def adam(
     successive iterates falls below the tolerance ``tol`` or when the maximum
     number of iterations ``maxiter`` is reached.
 
-    Returns
-    -------
-    Solution
+    Returns:
         A Solution object containing the final iterate.
 
-    References
-    ----------
+    References:
         - D. P. Kingma and J. Ba. *Adam: A Method for Stochastic Optimization*. International Conference on Learning Representations (ICLR), 2015.
     """
 

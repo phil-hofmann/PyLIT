@@ -104,13 +104,11 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     method_func = getattr(methods, config.method_name)
     optimizer_func = getattr(optimizer, config.optimizer_name)
 
+    # TODO TC
     omega_l, omega_r = 0.0, y_tol_fit(prep.scaled_D, prep.omega, config.y_tol)
-
-    if config.detailed_balance:
-        omega_l = 0.0
-
     mu_S = np.linspace(omega_l, omega_r, config.n, dtype=FLOAT_DTYPE)
 
+    # TODO TC
     sigma_S = (
         fat_tol_fit(
             omega=prep.omega,
@@ -135,11 +133,8 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     )
 
     # Regression Matrix
-    if config.tau_scaling is not None:
-        model = linear_scaling_decorator(lrm=model)
-    if config.detailed_balance is not None and config.tau_scaling is not None:
-        model = detailed_balance_decorator(lrm=model)
-    elif config.detailed_balance is not None:
+    model = linear_scaling_decorator(lrm=model)
+    if config.detailed_balance:
         model = detailed_balance_decorator(lrm=model)
     model.compute_regression_matrix()
 
@@ -157,7 +152,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     # Optimize
     R = model.regression_matrix
-    m = R.shape[1]
+    m = R.shape[1] # TODO TC: not needed, when c0_guess is used
     first_param_len = len(model.params[0])
     solutions = []
 
@@ -169,7 +164,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
             c0 = (
                 config.c0[i] / _max_F
                 if config.c0 is not None
-                else np.zeros(m, dtype=FLOAT_DTYPE)
+                else np.zeros(m, dtype=FLOAT_DTYPE) # TODO TC: c0_guess
             )
             if config.adaptive:
 
@@ -272,14 +267,13 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     max_eps_S = np.amax(eps_S, axis=1)
 
-    # Store S, L(S) to CSV TODO!
     if config.path_S is not None:
-        S_df = pd.DataFrame([prep.omega, *S]).T
-        S_df.to_csv(config.path_S, index=False, header=False)
+        S_df = np.concatenate([np.array([prep.omega]).T, np.array(S)[:,0].T], axis=1)
+        pd.DataFrame(S_df).to_csv(config.path_S, index=False, header=False)
 
     if config.path_L_S is not None:
-        L_S_df = pd.DataFrame([prep.tau, *forward_S]).T
-        L_S_df.to_csv(config.path_L_S, index=False, header=False)
+        L_S_df = np.concatenate([np.array([prep.tau]).T, np.array(forward_S)[:,0].T], axis=1)
+        pd.DataFrame(L_S_df).to_csv(config.path_L_S, index=False, header=False)
 
     res = Result(
         eps=eps,

@@ -1,40 +1,35 @@
 import numpy as np
 from numba import njit
-
-# TODO REMOVE!
-@njit
-def jit_sub_mat_by_index_set(mat: np.ndarray, I: np.ndarray) -> np.ndarray:
-    n = len(I)
-    sub = np.zeros((n, n), dtype=mat.dtype)
-
-    if len(mat.shape) == 2:
-        for i_, i in enumerate(I):
-            for j_, j in enumerate(I):
-                sub[i_][j_] = mat[i][j]
-
-    else:
-        raise NotImplementedError("Unsupported number of dimensions for mat.")
-
-    return sub
-
+from typing import Tuple
 
 @njit
-def jit_sub_vec_by_index_set(vec: np.ndarray, I: np.ndarray) -> np.ndarray:
-    n = len(I)
-    sub = np.zeros(n, dtype=vec.dtype)
+def svd_optim(R: np.ndarray, F: np.ndarray, x0: np.ndarray)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    r"""
+    Perform a singular value decomposition (SVD) of matrix R
+    and transform F and x0 into the SVD coordinate system.
 
-    if len(vec.shape) == 1:
-        for i_, i in enumerate(I):
-            sub[i_] = vec[i]
+    Args:
+        R:
+            A 2D square matrix to decompose (shape: (n, n)).
+        F:
+            A 2D array to be transformed using the left singular vectors of R (shape: (n, m)).
+        x0:
+            A 1D array to be transformed using the right singular vectors of R (shape: (n,)).
 
-    else:
-        raise NotImplementedError("Unsupported number of dimensions for vec.")
+    Returns
+    -------
+        S: (np.ndarray)
+            A diagonal matrix of singular values (shape: (n, n)).
+        F_prime: (np.ndarray)
+            The transformed version of F in the SVD coordinate system (shape: (n, m)).
+        x0_prime: (np.ndarray)
+            The transformed version of x0 in the SVD coordinate system (shape: (n,)).
+        V: (np.ndarray)
+            The right singular vector matrix (shape: (n, n)).
 
-    return sub
-
-
-@njit
-def svd_optim(R: np.ndarray, F: np.ndarray, x0: np.ndarray):
+    Notes:
+        - This function uses the decomposition :math:`R = U S V^\top` where :math:`U` and :math:`V` are orthogonal matrices, and S is diagonal with singular values.
+    """
     U, S_diag, VT = np.linalg.svd(R)
     S = np.zeros_like(R)
     np.fill_diagonal(S, S_diag)
@@ -45,7 +40,22 @@ def svd_optim(R: np.ndarray, F: np.ndarray, x0: np.ndarray):
 
 
 @njit
-def argmax(array):
+def argmax(array: np.ndarray) -> int:
+    """
+    Find the index of the maximum value in a 1D array.
+
+    Args:
+        array: 
+            A 1D array of numeric values.
+
+    Returns:
+        The index of the maximum value in the array.
+
+    Notes:
+        - Equivalent to `np.argmax(array)`, but implemented manually
+          for use in Numba-compiled functions.
+        - Assumes the array has at least one element.
+    """
     max_value = array[0]
     max_index = 0
     for i in range(1, len(array)):

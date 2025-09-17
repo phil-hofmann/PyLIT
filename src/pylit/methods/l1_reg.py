@@ -16,58 +16,56 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 def l1_reg(lambd: FLOAT_DTYPE) -> Method:
     r"""
-    # Least Squares with L1 Regularization
+    This is the L1 regularization method. `The interface is described in` :ref:`Methods <methods>`.
 
-    Implements the Least Squares with L1 Regularization with the objective function
+    The objective function
 
-    \\[
+    .. math::
+
         f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
-        \lambda \| u \|_{L^1(\mathbb{R})}
-    \\]
+        \lambda \| u \|_{L^1(\mathbb{R})},
 
-    which is here implemented as
+    is implemented as
 
-    \\[
+    .. math::
+
         f(\boldsymbol{\alpha}) =
         \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|_1
-    \\]
+        \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|_1,
+
 
     with the gradient
 
-    \\[
+    .. math::
+
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
         \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) \pm
-        \lambda \frac{1}{n}, \quad \boldsymbol{\alpha} \neq 0
-    \\]
+        \lambda \frac{1}{n}, \quad \boldsymbol{\alpha} \neq 0,
+    
 
-    with the learning rate
+    the learning rate
 
-    \\[
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}, \quad \boldsymbol{\alpha} \neq 0
-    \\]
+    .. math::
+
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}, \quad \boldsymbol{\alpha} \neq 0,
+    
 
     and the solution
 
-    \\[
-        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} \pm \lambda), \quad \boldsymbol{\alpha} \neq 0
-    \\]
+    .. math::
+
+        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} \pm \lambda), \quad \boldsymbol{\alpha} \neq 0,
 
     where
 
-    - **$\boldsymbol{R}$**: Regression matrix
-    - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{\alpha}$**: Coefficient vector
-    - **$\lambda$**: Regularization parameter
-    - **$n$**: Number of samples
-
-    ### Arguments
-    - **lambd** (np.float64): Regularization Parameter.
-
-    ### Returns
-    - **Method**(Method): Implemented formulation for Least Squares with L1 Regularization.
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
     """
+
     # Type Conversion
     lambd = FLOAT_DTYPE(lambd)
 

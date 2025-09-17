@@ -56,17 +56,13 @@ def nnls(
     The algorithm terminates when all free variables satisfy the Karush–Kuhn–Tucker
     (KKT) conditions or when the maximum number of iterations ``maxiter`` is reached.
 
-    Returns
-    -------
-    Solution
+    Returns:
         A Solution object containing the final iterate.
 
-    Notes
-    -----
+    Notes:
         - This implementation does **not** support SVD preconditioning.
 
-    References
-    ----------
+    References:
         - Rasmus Bro, Sijmen De Jong. *A Fast Non-Negativity-Constrained Least Squares Algorithm*. Journal of Chemometrics, Vol. 11, pp. 393–401, 1997.
     """
 

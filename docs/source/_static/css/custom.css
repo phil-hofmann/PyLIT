@@ -1,0 +1,27 @@
+/* set several likely variables + fallbacks for light & dark */
+:root,
+[data-theme="light"] {
+  --pst-color-primary: #4986F7;
+  --pst-color-secondary: #4986F7;
+  --color-primary: #4986F7;
+  --color-link: #4986F7;
+}
+
+/* dark theme overrides (important — some themes use different vars in dark mode) */
+[data-theme="dark"] {
+  --pst-color-primary: #4986F7;
+  --pst-color-secondary: #4986F7;
+  --color-primary: #4986F7;
+  --color-link: #4986F7;
+}
+
+/* fallback hard overrides if variables are ignored */
+a, a:visited, .reference {
+  color: var(--pst-color-primary, #4986F7) !important;
+}
+
+button, .btn, .btn-primary, .navbar .navbar-nav .nav-link {
+  background-color: var(--pst-color-primary, #4986F7) !important;
+  border-color: var(--pst-color-primary, #4986F7) !important;
+  color: #fff !important;
+}

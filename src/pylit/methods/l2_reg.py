@@ -16,58 +16,52 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 def l2_reg(lambd: FLOAT_DTYPE) -> Method:
     r"""
-    # Least Squares with L2 Regularization
+    This is the L2 regularization method. `The interface is described in` :ref:`Methods <methods>`.
 
-    Implements the Least Squares with L2 Regularization with the objective function
+    The objective function
 
-    \\[
+    .. math::
+
         f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
-        \frac{1}{2} \lambda \| u \|_{L^2(\mathbb{R})}^2
-    \\]
+        \frac{1}{2} \lambda \| u \|_{L^2(\mathbb{R})}^2,
 
-    which is here implemented as
+    is implemented as
 
-    \\[
+    .. math::
+
         f(\boldsymbol{\alpha}) =
         \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|^2_2
-    \\]
+        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|^2_2,
 
     with the gradient
 
-    \\[
+    .. math::
+
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
         \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \lambda \frac{1}{n} \boldsymbol{\alpha}
-    \\]
+        \lambda \frac{1}{n} \boldsymbol{\alpha},
 
-    with the learning rate
+    the learning rate
 
-    \\[
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I} \|}
-    \\]
+    .. math::
+
+        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I} \|},
 
     and the solution
 
-    \\[
-        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I})^{-1} \boldsymbol{R}^\top \boldsymbol{F}
-    \\]
+    .. math::
+
+        \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I})^{-1} \boldsymbol{R}^\top \boldsymbol{F},
 
     where
 
-    - **$\boldsymbol{R}$**: Regression matrix
-    - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{I}$**: Identity matrix
-    - **$\boldsymbol{\alpha}$**: Coefficient vector
-    - **$\lambda$**: Regularization parameter
-    - **$n$**: Number of samples
-
-    # Arguments
-    - **lambd**(np.float64): Regularization parameter.
-
-    # Returns
-    - **Method**(Method): Least Squares with L2 Regularization.
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{I}`: Identity matrix,
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
     """
 
     # Type Conversion

@@ -50,30 +50,26 @@ def adaptiveRF(
     final solution corresponds to the block configuration yielding the minimal
     residuum or epsilon, depending on ``residuum_mode``.
 
-    Parameters
-    ----------
-    R : np.ndarray
-        Regression matrix of shape ``(m, n)``.
-    F : np.ndarray
-        Target vector of shape ``(m,)``.
-    x0 : np.ndarray
-        Initial guess for the solution, shape ``(n,)``.
-    steps : INT_DTYPE
-        Block size for adaptive optimization. Must be positive and divide ``n``.
-    optim_RFx0 : callable
-        Optimization function with signature ``optim_RFx0(R, F, x0)`` returning
-        a ``Solution`` object.
-    residuum_mode : bool, optional
-        If ``True``, the selection of the best solution is based on residuum.
-        Otherwise, the epsilon value is used. Default is ``False``.
+    Args:
+        R:
+            Regression matrix of shape ``(m, n)``.
+        F:
+            Target vector of shape ``(m,)``.
+        x0:
+            Initial guess for the solution, shape ``(n,)``.
+        steps:
+            Block size for adaptive optimization. Must be positive and divide ``n``.
+        optim_RFx0:
+            Optimization function with signature ``optim_RFx0(R, F, x0)`` returning 
+            a ``Solution`` object.
+        residuum_mode:
+            If ``True``, the selection of the best solution is based on residuum.
+            Otherwise, the epsilon value is used. Default is ``False``.
 
-    Returns
-    -------
-    Solution
+    Returns:
         A ``Solution`` object containing the final iterate, epsilon, and residuum.
 
-    Notes
-    -----
+    Notes:
         - This adaptive wrapper is particularly useful for high-dimensional
           regression problems where a full optimization may be inefficient.
         - The truncation of ``x0`` as initial guess for blocks may not be optimal.
@@ -106,26 +102,6 @@ def _adaptiveRF(
     optim_RFx0,
     residuum_mode,
 ):
-    """Solves the optimization problem using an adaptive algorithm.
-
-    Parameters
-    ----------
-    R : ARRAY
-        Regression matrix.
-    F: ARRAY
-        Target values.
-    steps : INT_DTYPE
-        The cardinality of the first parameter set.
-    optim_RFx0 : callable
-        The optimization method.
-    residuum_mode : bool
-        If True, the residuum is used to determine the best solution. Otherwise, the epsilon is used.
-
-    Returns
-    -------
-    ARRAY:
-        Returns the solution."""
-
     if not steps > 0:
         raise ValueError("The number must be positive.")
 

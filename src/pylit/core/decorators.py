@@ -8,22 +8,19 @@ def linear_scaling_decorator(
 ) -> LinearRegressionModel:
     r"""Decorator for the Linear Regression Model.
 
-    This decorator is used to scale the time axis to [0,1].
+    This decorator is used to scale the time axis :math:`\tau` to [0,1].
 
-    Parameters
-    ----------
-    lrm : LinearRegressionModel
-        The  linear regression model.
+    Args:
+        lrm :
+            The  linear regression model.
 
-    Returns
-    -------
-    LinearRegressionModel:
+    Returns:
         The scaled linear regression model.
     """
 
     # Apply the scaling decorators
-    lrm.kernel = TauLinearScaling(lrm.tau)(lrm.kernel)
-    lrm.ltransform = OmegaLinearScaling(lrm.tau)(lrm.ltransform)
+    lrm.kernel = OmegaLinearScaling(lrm.tau)(lrm.kernel)
+    lrm.ltransform = TauLinearScaling(lrm.tau)(lrm.ltransform)
 
     return lrm
 
@@ -35,14 +32,11 @@ def detailed_balance_decorator(
 
     This decorator is used to apply the detailed balance.
 
-    Parameters
-    ----------
-    lrm : LinearRegressionModel
-        The  linear regression model.
+    Args:
+        lrm:
+            The  linear regression model.
 
-    Returns
-    -------
-    LinearRegressionModel:
+    Returns:
         The detailed balanced linear regression model.
     """
 

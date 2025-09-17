@@ -19,6 +19,9 @@ This software provides a Python implementation of the inverse Laplace Transform.
    methods
    models
    optimizer
+   experiment
+   njit_utils
+   utils
 
 License
 -------
@@ -39,16 +42,11 @@ Team and Support
 - `Phil-Alexander Hofmann <https://github.com/philippocalippo/>`_
 - `Alexander Benedix Robles <https://github.com/alexanderbenedix/>`_
 - `Thomas Chuna <https://github.com/chunatho>`_
+- `Tobias Dornheim <https://www.casus.science/?page_id=4442>`_,
+- `Michael Hecht <https://www.casus.science/?page_id=4528>`_,
 
-Acknowledgments
----------------
 
-We would like to acknowledge:
-
-- `Dr. Tobias Dornheim <https://www.casus.science/de-de/team-members/dr-tobias-dornheim/>`_ - `CASUS <https://www.casus.science>`_ (`HZDR <https://www.hzdr.de/>`_),
-- `Prof. Dr. Michael Hecht <https://www.casus.science/de-de/team-members/michael-hecht/>`_ - `CASUS <https://www.casus.science>`_ (`HZDR <https://www.hzdr.de/>`_),
-
-and the support and resources provided by the
+We would like to acknowledge the support and resources provided by the
 `Center for Advanced Systems Understanding <https://www.casus.science/>`_
 (`Helmholtz-Zentrum Dresden-Rossendorf <https://www.hzdr.de/>`_)
 where the development of this project took place.

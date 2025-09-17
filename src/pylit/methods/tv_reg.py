@@ -16,59 +16,52 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 def tv_reg(E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     r"""
-    # Least Squares with Total Variation Regularization
+    This is the total variation regularization method. `The interface is described in` :ref:`Methods <methods>`.
 
-    Implements the Least Squares with Total Variation Regularization with the objective function
-    (correct that)
-    \\[
+    The objective function (correct that)
+    
+    .. math::
+
         f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
         \frac{1}{2} \lambda \left\| \frac{du}{d\omega} \right\|_{L^2(\mathbb{R})}^2
-    \\]
 
-    which is here implemented as
+    is implemented as
 
-    \\[
+    .. math::
+
         f(\boldsymbol{\alpha}) =
         \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
         \frac{1}{2} \lambda \left\| \boldsymbol{V}_\boldsymbol{E} \boldsymbol{\alpha} \right\|_{2}^2
-    \\]
 
     with the gradient
 
-    \\[
+    .. math::
+
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
         \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
         \lambda \boldsymbol{V}_\boldsymbol{E}^\top \boldsymbol{V}_\boldsymbol{E} \boldsymbol{\alpha}
-    \\]
 
-    with the learning rate
+    the learning rate
 
-    \\[
+    .. math::
+
         \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + \lambda n \|\boldsymbol{V}_\boldsymbol{E}^\top \boldsymbol{V}_\boldsymbol{E}\|}
-    \\]
 
     and the solution
 
-    \\[
-        \textit{no closed form solution available}
-    \\]
+    .. math::
+
+        \boldsymbol{\alpha}^* = \left( \frac{1}{n} \boldsymbol{R}^\top \boldsymbol{R} + \lambda \, \boldsymbol{V}_{\boldsymbol{E}}^\top \boldsymbol{V}_{\boldsymbol{E}} \right)^{-1} \boldsymbol{R}^\top \boldsymbol{F},
 
     where
 
-    - **$\boldsymbol{R}$**: Regression matrix
-    - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{V}_\boldsymbol{E}$**: Variation matrix of the evaluation matrix
-    - **$\boldsymbol{\alpha}$**: Coefficient vector
-    - **$\lambda$**: Regularization parameter
-    - **$n$**: Number of samples
-
-    ### Arguments
-    - **E** (np.ndarray): Evaluation matrix
-    - **lambd** (np.float64): Regularization parameter.
-
-    ### Returns
-    - **Method**(Method): Least Squares with Total Variation Regularization Method.
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{V}_{\boldsymbol{E}}`: Variation matrix of the evaluation matrix.
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
     """
 
     # Type Conversion

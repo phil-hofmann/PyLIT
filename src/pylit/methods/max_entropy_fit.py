@@ -17,61 +17,53 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 def max_entropy_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     r"""
-    # Least Squares Maximum Entropy Fit
+    This is the maximum entropy fitting method. `The interface is described in` :ref:`Methods <methods>`.
 
-    Implements the Least Squares Maximum Entropy Fit with the objective function
+    The objective function
 
-    \\[
+    .. math::
+
         f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} -
-        \lambda \int_{-\infty}^\infty u(\omega) \log \left( \frac{u(\omega)}{w(\omega)} \right) d\omega
-    \\]
+        \lambda \int_{-\infty}^\infty u(\omega) \log \left( \frac{u(\omega)}{w(\omega)} \right) d\omega,
 
-    which is here implemented as
+    is implemented as
 
-    \\[
+    .. math::
+
         f(\boldsymbol{\alpha}) =
         \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \lambda \frac{1}{n} \sum_{i=1}^n (\boldsymbol{E} \boldsymbol{\alpha})_i \log \frac{(\boldsymbol{E} \boldsymbol{\alpha})_i}{D_i}
-    \\]
+        \lambda \frac{1}{n} \sum_{i=1}^n (\boldsymbol{E} \boldsymbol{\alpha})_i \log \frac{(\boldsymbol{E} \boldsymbol{\alpha})_i}{D_i},
 
     with the gradient
 
-    \\[
+    .. math::
+
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
         \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \lambda \frac{1}{n} \boldsymbol{E}^\top(\log \boldsymbol{E} \boldsymbol{\alpha} - \log \boldsymbol{D} + 1)
-    \\]
+        \lambda \frac{1}{n} \boldsymbol{E}^\top(\log \boldsymbol{E} \boldsymbol{\alpha} - \log \boldsymbol{D} + 1),
 
-    with the learning rate
+    the learning rate
 
-    \\[
-        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + \lambda \|\boldsymbol{E}\|^2}
-    \\]
+    .. math::
+
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + \lambda \|\boldsymbol{E}\|^2},
 
     and the solution
 
-    \\[
-        \textit{no closed form solution available}
-    \\]
+    .. math::
+
+        \textit{No closed form solution available},
 
     where
 
-    - **$\boldsymbol{R}$**: Regression matrix
-    - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{D}$**: Default model vector
-    - **$\boldsymbol{E}$**: Evaluation matrix
-    - **$\boldsymbol{\alpha}$**: Coefficient vector
-    - **$\lambda$**: Regularization parameter
-    - **$n$**: Number of samples
-
-    # Arguments
-    - **D**(np.ndarray): Default model vector
-    - **E**(np.ndarray): Evaluation matrix
-    - **lambd**(np.float64): Regularization parameter.
-
-    # Returns
-    - **Method**(Method): Least Squares Maximum Entropy Fit.
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{E}`: Evaluation matrix,
+    - :math:`\boldsymbol{D}`: Default model vector,
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
     """
 
     # Type Conversion

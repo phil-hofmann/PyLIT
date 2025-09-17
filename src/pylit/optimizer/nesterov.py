@@ -51,13 +51,10 @@ def nesterov(
     successive iterates falls below the tolerance ``tol`` or when the maximum
     number of iterations ``maxiter`` is reached.
     
-    Returns
-    -------
-    Solution
+    Returns:
         A Solution object containing the final iterate.
 
-    References
-    ----------
+    References:
         - Y. Nesterov. *Gradient methods for minimizing composite functions*. Mathematical Programming, 140(1), 125–161, 2012.  
     """
 
