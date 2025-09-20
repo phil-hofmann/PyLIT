@@ -9,6 +9,20 @@ from pylit.settings import FLOAT_DTYPE
 
 
 def to_string(obj):
+    """
+    Create a human-readable string representation of an object and its attributes.
+
+    Handles special formatting for arrays, lists, floats, and dictionaries.
+
+    Args:
+        obj:
+            Any object with attributes accessible via ``vars(obj)``.
+
+    Returns:
+        str:
+            A string summarizing the object's attributes.
+    """
+
     attributes = vars(obj)
     mystr = obj.__class__.__name__ + " object:\n"
 
@@ -41,6 +55,24 @@ def to_string(obj):
 
 
 def import_xY(path: Path) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Load and preprocess data from a CSV file into x and Y arrays.
+
+    The first column is treated as the x-values, while the remaining
+    columns are treated as Y-values. The data is sorted by x.
+
+    Args:
+        path:
+            Path to the CSV file.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]:
+            - x (1D array): Sorted x-values.
+            - Y (2D array): Corresponding Y-values (transposed for row-wise access).
+
+    Raises:
+        ValueError: If the file does not exist, is empty, or has invalid format.
+    """
 
     if not os.path.isfile(path):
         raise ValueError(f"File: {path} does not exist.")
@@ -67,7 +99,7 @@ def import_xY(path: Path) -> Tuple[np.ndarray, np.ndarray]:
 
 
 class NumpyArrayEncoder(json.JSONEncoder):
-    """Custom JSON encoder for numpy arrays."""
+    """Custom JSON encoder that converts NumPy arrays to lists."""
 
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -75,16 +107,34 @@ class NumpyArrayEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def save_to_json(obj, filename):
+def save_to_json(obj, filename: Path):
     """
-    Serializes an object to JSON and saves it to a file.
+    Serialize an object's attributes to JSON and save to file.
+
+    NumPy arrays are converted to lists for compatibility.
+
+    Args:
+        obj:
+            Object with a ``__dict__`` attribute.
+        filename:
+            Path to save the JSON file.
     """
+
     with open(filename, "w") as file:
         json.dump(obj.__dict__, file, cls=NumpyArrayEncoder, indent=4)
 
 
-def _numpy_array_decoder(obj):
-    """Custom decoder function that converts lists to numpy arrays if they contain only numeric types."""
+def _numpy_array_decoder(obj) -> dict:
+    """
+    Decode JSON data by converting lists to numpy arrays when possible.
+
+    Args:
+        obj:
+            Dictionary parsed from JSON.
+
+    Returns:
+        Dictionary with lists converted to numpy arrays when appropriate.s.
+    """
     for key, value in obj.items():
         if isinstance(value, list):  # Check if the value is a list
             try:
@@ -96,8 +146,23 @@ def _numpy_array_decoder(obj):
     return obj
 
 
-def load_from_json(obj, filename):
-    """Loads an object from a JSON file, filtering out any keys not present in the __init__ method."""
+def load_from_json(obj, filename: Path):
+    """
+    Load and reconstruct an object from JSON file.
+
+    Filters out any keys not present in the ``__init__`` method
+    of the target class.
+
+    Args:
+        obj:
+            Class type to instantiate.
+        filename:
+            Path to the JSON file.
+
+    Returns:
+        Instance of ``obj`` constructed with filtered attributes.
+    """
+
     with open(filename, "r") as file:
         obj_dict = json.load(file, object_hook=_numpy_array_decoder)
 
@@ -114,15 +179,15 @@ def exp_std(omega: np.ndarray, rho: np.ndarray) -> Tuple[float, float]:
     """Calculate the corrected sample variance for the input data array.
 
     Args:
-        omega: np.ndarray
+        omega:
             The input data array of omega values.
-
-        rho: np.ndarray
-            The (probably unscaled and negative) density function of the input data array.
+        rho:
+            Density function values, must match the size of ``omega``.
 
     Returns:
         Tuple[float, float]:
-            Returns the expected value (mu) and the standard deviation (sigma)."""
+            - mu: Expected value.
+            - sigma: Standard deviation."""
 
     # Type Conversion
     omega = np.asarray(omega).astype(FLOAT_DTYPE)
@@ -148,18 +213,18 @@ def exp_std(omega: np.ndarray, rho: np.ndarray) -> Tuple[float, float]:
 def complete_detailed_balance(
     omega: np.ndarray, D: np.ndarray, beta: float
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Complete the detailed balance of the input data omega and D.
+    r"""Extend the default model :math:`D(\omega)` to satisfy the detailed balance.
 
     Args:
-        omega : np.ndarray
-            The input array of (non-negative) omega values.
-        D : np.ndarray
-            The input array of D(omega) values.
-        beta : float
-            The beta parameter for the detailed balance.
+        omega:
+            Array of non-negative discrete frequency axis.
+        D:
+            The default model :math:`D(\omega)` evaluated at ``omega``.
+        beta:
+            Inverse temperature parameter :math:`\beta`
 
     Returns:
-        Tuple[np.ndarray, np.ndarray
+        Tuple[np.ndarray, np.ndarray]:
             The completed omega and D values in terms of detailed balance.
     """
 
@@ -190,6 +255,21 @@ def complete_detailed_balance(
 
 
 def moments(omega: np.ndarray, rho: np.ndarray, alphas: np.ndarray) -> np.ndarray:
+    """
+    Compute statistical moments of a distribution.
+
+    Args:
+        omega:
+            Array of discrete frequency axis.
+        rho:
+            Density function values, must match the size of ``omega``.
+        alphas:
+            Powers for which to compute the moments.
+
+    Returns:
+        Array of computed moments.
+    """
+
     # Type Conversion
     omega = np.asarray(omega).astype(FLOAT_DTYPE)
     rho = np.asarray(rho).astype(FLOAT_DTYPE)
@@ -206,17 +286,17 @@ def moments(omega: np.ndarray, rho: np.ndarray, alphas: np.ndarray) -> np.ndarra
 
 
 def generate_multi_index_set(dimension: int, degrees: List[int]) -> np.ndarray:
-    """Compute the multi indices with respect to the dimension and the degree.
+    """Generate a set of multi-indices.
 
     Args:
-        dimension : int
-            The dimension of the multi indices.
-        degree : List[int]
-            The degree of the multi indices.
+        dimension:
+            Length of multi-indices. (In practice, only ``dimension=1`` is used.)
+        degrees:
+            Maximum degree in each dimension.
+
 
     Returns:
-        np.ndarray
-            The multi indices.
+        Array of multi-indices, shape (n_combinations, dimension).
     """
 
     # Compute multi-indices
@@ -229,6 +309,20 @@ def generate_multi_index_set(dimension: int, degrees: List[int]) -> np.ndarray:
 
 
 def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, callable]:
+    """Construct diffeomorphic transformations between two intervals.
+
+    Args:
+        tau1:
+            Upper bound of the target interval.
+        tau0:
+            Lower bound of the target interval.
+
+    Returns:
+        Tuple[callable, callable]:
+            - Forward mapping diffeomorphism ``psy(tau)``.
+            - Inverse mapping diffeomorphism ``psy_inv(tau)``.
+    """
+
     def psy(tau: FLOAT_DTYPE) -> FLOAT_DTYPE:
         return (tau - tau0) / (tau1 - tau0)
 
@@ -239,16 +333,18 @@ def diff_interval(tau1: FLOAT_DTYPE, tau0: FLOAT_DTYPE) -> Tuple[callable, calla
 
 
 def find_zero(array: np.ndarray) -> int:
-    """Finds the index where the sign flips from negative to positive.
-    
+    """Finds the index where the sign changes from negative to positive.
+
     Args:
         array:
             One-dimensional array of values.
     Returns:
-        Index `i+1` such that arr[i] < 0 and arr[i+1] >= 0. Returns None if no flip is found."""
+        Index `i+1` such that arr[i] < 0 and arr[i+1] >= 0.
+        Returns None if no sign change is found.
+    """
     for i in range(len(array) - 1):
         if array[i] < 0 and array[i + 1] >= 0:
-            return i+1
+            return i + 1
     return None
 
 
@@ -263,12 +359,11 @@ def find_max_cutoff(array: np.ndarray, cutoff: float):
             Threshold value.
 
     Returns:
-        Index of the first element smaller than the ``cutoff`` when scanning
-        forward from the global maximum. If no such element is found,
-        returns None.
+        Index of the first element smaller than the ``cutoff`` after the (global) maximum.
+        Returns None if no such element is found.
     """
     i_start = np.argmax(array)
     for i in range(i_start, len(array)):
-        if (array[i] < cutoff):
+        if array[i] < cutoff:
             return i
     return None

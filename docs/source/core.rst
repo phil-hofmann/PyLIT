@@ -8,3 +8,4 @@ Core
    core/decorators
    core/detailed_balance
    core/linear_scaling
+   core/selection

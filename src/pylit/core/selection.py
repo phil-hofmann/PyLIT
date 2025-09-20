@@ -5,173 +5,164 @@ from scipy.optimize import nnls
 from pylit.settings import FLOAT_DTYPE
 from scipy.ndimage import gaussian_filter1d
 from pylit.utils import find_zero, find_max_cutoff
-
-# Initial guess
-
-# TODO c0...
+from pylit.core.data_classes import Configuration, Preparation
+from pylit.core.decorators import detailed_balance_decorator
 
 # Simulated Annealing
 
-def simulatedAnnealingAlg(
-    omega: np.ndarray,
-    tau: np.ndarray,
-    D: np.ndarray,
-    mu: np.ndarray,
-    model_name: str,
-    tol: float,
-    widths: int,
-    window: int,
-    detailed_balance: bool,
-    beta: float
+
+def simulated_annealing(
+    config: Configuration,
+    prep: Preparation,
+    has_sigma: bool,
+    max_iter: int = 200,
 ) -> np.ndarray:
-    """Finds the best kernel widths, in order to fit the data.
-    
+    """
+    Perform parameter selection using simulated annealing.
+
+    This method optimizes kernel centers and widths by iteratively proposing
+    new parameter values and accepting them based on a Metropolis–Hastings
+    acceptance criterion.
+
     Args:
-        omega: np.ndarray
-            The support points.
-        D: np.ndarray
-            The target values.
-        mu: np.ndarray
-            The support points for the model.
-        tol: float
-            The tolerance level.
-        widths: int
-            The total number of kernel widths.
-        window: int
-            The window size when searching for the best kernel widths.
-    
+        config:
+            Configuration object.
+        prep:
+            Preparation object.
+        has_sigma:
+            Whether the model uses kernel widths as parameters.
+        max_iter:
+            Maximum number of iterations performed during the optimization procedure.
+
     Returns:
-        np.ndarray
-            The best kernel widths under the given specifications."""
+        The optimized kernel centers and, if available, the optimized kernel widths.
+    """
 
-    # 0) declare auxillary variables
-    SA_beta = 1.5 # Metropolis Hastings Beta
-    step_size=0.1 # standard deviation of Gaussian noise is 0.1 of the current value.
-    max_SA_iterations = widths # repurpose widths parameter for max_SA_iterations
-    print('model name', model_name)
-    if (model_name != 'Uniform'):
-        interval_widths = np.abs(np.diff(mu))
-        max_interval_width = np.amax(interval_widths)
-        min_interval_width = np.amin(interval_widths)
-        geometric_mean_of_max_min = np.sqrt(max_interval_width * min_interval_width)
-        sigma = np.geomspace(2*geometric_mean_of_max_min, geometric_mean_of_max_min/10., window)
+    # Guess mu and sigma
+    mu = (
+        _select_omega_by_distribution(
+            prep.omega, prep.scaled_D, config.n, config.detailed_balance
+        )
+        if has_sigma
+        else _select_omega_by_gradient(
+            prep.omega, prep.scaled_D, config.n, config.detailed_balance
+        )
+    )
+    interval_widths = np.abs(np.diff(mu))
+    geometric_mean_of_max_min = np.sqrt(
+        np.amax(interval_widths) * np.amin(interval_widths)
+    )
+    sigma = np.geomspace(
+        2 * geometric_mean_of_max_min, geometric_mean_of_max_min / 10.0, config.widhts
+    )
 
-        # 2/n, 1/(10n), window
-    else:
-        sigma=None
+    # ````
+    # Build model
+    ModelClass = getattr(models, config.model_name)
+    model = ModelClass(prep.tau, mu, sigma) if has_sigma else ModelClass(prep.tau, mu)
+    if config.detailed_balance:
+        model = detailed_balance_decorator(lrm=model)
 
-    # Instantiate model
-    ModelClass = getattr(models, model_name)
-    if (model_name != 'Uniform'):
-        model = ModelClass(tau, mu, sigma)
-    else:
-        model = ModelClass(tau, mu)
-
-    model = detailed_balance_decorator(lrm=model, beta=beta)
-    model.compute_regression_matrix()
-    R = model.regression_matrix
-    E = model(omega, matrix=True)
+    # Forward pass
+    E = model(prep.omega, matrix=True)
+    D = prep.scaled_D
     c, _ = nnls(E, D)
     proposal_D = E @ c
+    # ````
 
-    # 4) instantiate SA diagnostics and SA result
-    sigma_list = [sigma];
-    svdvals_list = [ np.linalg.svdvals(R) ];
-    D_list = [ proposal_D ]
+    # Annealing states
+    SA_beta = 1.5  # Metropolis Hastings Beta
+    step_size = 0.1  # Gaussian noise scale
+    eps = np.sum((D - proposal_D) ** 2)
 
-    # NOTE: this seems wrong.
-    eps_list = [ np.mean(np.linalg.norm(D - proposal_D)**2) ]
-    
-    best_mu = np.copy(mu)
-    if (model_name != 'Uniform'):
-        best_sigma = np.copy(sigma)
-    else:
-        best_sigma = None
-    best_c0 = np.copy(c)
-    best_E = np.copy(E)
-    best_index = 0
-    for i in range(max_SA_iterations):
-        # Propose new sigma values by adding Gaussian noise in log space (to stay positive)
-        proposal_mu = mu*np.exp( step_size*np.random.normal(size=mu.shape) )
-        proposal_mu = np.sort(proposal_mu) # sort just in case!
-        if (model_name != 'Uniform'):
-            proposal_sigma = sigma*np.exp( step_size*np.random.normal(size=sigma.shape) )
-            #scaling = eps_list[-1]/eps_list[0]
-            #proposal_sigma = sigma*np.exp( scaling*np.random.normal(size=sigma.shape) )
-        else:
-            proposal_sigma = None
+    best_mu, best_sigma, best_eps = (
+        np.copy(mu),
+        np.copy(sigma) if has_sigma else None,
+        eps,
+    )
 
-        # evaluate proposal_sigma
-        if (model_name != 'Uniform'):
-            model = ModelClass(tau, proposal_mu, proposal_sigma)
-        else:
-            model = ModelClass(tau, proposal_mu)
-        model = detailed_balance_decorator(lrm=model, beta=beta)
-        E = model(omega, matrix=True)
-        c, _ = nnls(E, D) # invert evaluation to find the coefficients
-        proposal_D = E @ c # infer what solution was reach by nnls
+    for _ in range(max_iter):
+        # Propose parameters
+        proposal_mu = np.sort(mu * np.exp(step_size * np.random.normal(size=mu.shape)))
+        proposal_sigma = (
+            sigma * np.exp(step_size * np.random.normal(size=sigma.shape))
+            if has_sigma
+            else None
+        )
 
-        # NOTE: this seems wrong.
-        proposal_eps = np.mean(np.linalg.norm(D - proposal_D)**2) # assess chi_2 of appropriate interval
+        # ````
+        # Build model
+        model = (
+            ModelClass(prep.tau, proposal_mu, proposal_sigma)
+            if has_sigma
+            else ModelClass(prep.tau, proposal_mu)
+        )
+        if config.detailed_balance:
+            model = detailed_balance_decorator(lrm=model)
 
-        # Metropolis Hastings (MH) update
-        delta_eps = proposal_eps - eps_list[-1]
-        if delta_eps < 0 or np.random.rand() < np.exp(-SA_beta * delta_eps):
+        # Forward pass
+        E = model(prep.omega, matrix=True)
+        c, _ = nnls(E, D)
+        proposal_D = E @ c
+        # ````
 
-            # update mu and
-            mu = proposal_mu
-            sigma = proposal_sigma
+        proposal_eps = np.sum((D - proposal_D) ** 2)
 
-            # collect new sigmas and associated chi-sq
-            eps_list.append( proposal_eps )
-            sigma_list.append( proposal_sigma )
+        # Metropolis Hastings (MH)
+        delta_eps = proposal_eps - eps
+        if delta_eps >= 0 and np.random.rand() >= np.exp(-SA_beta * delta_eps):
+            continue  # reject proposal
 
-            # collect new singular values
-            model.compute_regression_matrix()
-            R = model.regression_matrix
-            svdvals_list.append( np.linalg.svdvals(R) )
-            # check is this error is below threshold
-            if proposal_eps <= tol:
-                best_index += 1
-                best_c0 = np.copy(c)
-                best_E = np.copy(E)
-                best_mu = np.copy(proposal_mu)
-                best_sigma = np.copy(proposal_sigma)
-                print('MH iteration:' ,i, 'proposal_eps: ', proposal_eps, ' updated best_sigma: ', best_sigma)
-                break
-            # check if this error the global best and cool down the algorithm
-            elif( np.all( proposal_eps <= eps_list) ):
-                SA_beta *= 0.9
-                step_size *= 0.9
-                best_index += 1
-                best_c0 = np.copy(c)
-                best_E = np.copy(E)
-                best_mu = np.copy(proposal_mu)
-                best_sigma = np.copy(proposal_sigma)
-                print('MH iteration:' ,i, 'proposal_eps: ', proposal_eps, ' updated best_sigma: ', best_sigma)
+        # Accept proposal
+        mu, sigma, eps = proposal_mu, proposal_sigma, proposal_eps
 
-    #if best_sigma is None:
-    #    raise ValueError("Keine Sigmas erfüllen die Toleranzanforderung.")
-    return np.abs(best_mu), best_sigma, best_c0
+        # --- Update best solution ---
+        if proposal_eps <= config.tol:
+            best_mu, best_sigma = np.copy(mu), np.copy(sigma)
+            break
 
-def _select_omega_by_distribution(omega:np.ndarray, D_omega:np.ndarray, n:int, detailed_balance:bool, std:float=5.0, cutoff:float=1e-8):
-    r"""Select distribution of kernel centers based on where
+        if proposal_eps <= best_eps:
+            best_mu, best_sigma, best_eps = np.copy(mu), np.copy(sigma), proposal_eps
+            SA_beta *= 0.9
+            step_size *= 0.9
+
+    return np.abs(best_mu), best_sigma
+
+
+def _select_omega_by_distribution(
+    omega: np.ndarray,
+    D_omega: np.ndarray,
+    n: int,
+    detailed_balance: bool,
+    std: float = 5.0,
+    cutoff: float = 1e-8,
+):
+    r"""
+    Select distribution of kernel centers based on where
     :math:`D(\omega)` has the most mass.
-    
+
     Args:
         omega:
             1D array of input values.
-        D_omega: 
+        D_omega:
             1D array of function values corresponding to w.
-        n: 
+        n:
             Number of points in the new redistributed array.
-    
+        std:
+            Standard deviation for Gaussian smoothing to suppress spikes and
+            Dirac-like features.
+        cutoff:
+            Minimum threshold below which values of :math:`D(\omega)` are ignored.
+
     Returns:
-        np.ndarray: 
-            New omega values redistributed based on the CDF."""
+        New omega values redistributed based on the CDF."""
 
     # Cutoff omega and D
-    left = find_zero(omega) if detailed_balance else len(omega)-1-find_max_cutoff(np.flip(D_omega))
+    left = (
+        find_zero(omega)
+        if detailed_balance
+        else len(omega) - 1 - find_max_cutoff(np.flip(D_omega))
+    )
     right = find_max_cutoff(D_omega, cutoff)
     omega = omega[left:right]
     D_omega = D_omega[left:right]
@@ -189,25 +180,41 @@ def _select_omega_by_distribution(omega:np.ndarray, D_omega:np.ndarray, n:int, d
 
     return new_omega
 
+
 def _select_omega_by_gradient(
-        omega:np.ndarray, D_omega:np.ndarray, n:int, detailed_balance: bool, std=5, cutoff=1e-12,
-    ):
-    r"""Select distribution of kernel centers based on where the gradient
+    omega: np.ndarray,
+    D_omega: np.ndarray,
+    n: int,
+    detailed_balance: bool,
+    std: float = 5,
+    cutoff: float = 1e-12,
+):
+    r"""
+    Select distribution of kernel centers based on where the gradient
     of :math:`D(\omega)` has the most mass.
-    
+
     Args:
-        omega: 
+        omega:
             1D array of input values.
-        D_omega: 
+        D_omega:
             1D array of function values corresponding to w.
-        n: 
+        n:
             Number of points in the new redistributed array.
-    
+        std:
+            Standard deviation for Gaussian smoothing to suppress spikes and
+            Dirac-like features.
+        cutoff:
+            Minimum threshold below which values of :math:`D(\omega)` are ignored.
+
     Returns:
         np.ndarray: New omega values redistributed based on gradient magnitude."""
 
     # Cutoff omega and D
-    left = find_zero(omega) if detailed_balance else len(omega)-1-find_max_cutoff(np.flip(D_omega))
+    left = (
+        find_zero(omega)
+        if detailed_balance
+        else len(omega) - 1 - find_max_cutoff(np.flip(D_omega))
+    )
     right = find_max_cutoff(D_omega, cutoff)
     omega = omega[left:right]
     D_omega = D_omega[left:right]
@@ -231,33 +238,72 @@ def _select_omega_by_gradient(
 
 # Heuristic
 
-def heuristic():
-    pass
 
-def _y_tol_fit(
-    D: np.ndarray, omega: np.ndarray, tol: float = 0.95
-) -> Tuple[float, float]:
-    """
-    Computes the threshold ω at a certain tolerance level.
+def heuristic(
+    config: Configuration, prep: Preparation, has_sigma: bool
+) -> Tuple[np.ndarray, np.ndarray]:
+    r"""
+    Perform parameter selection using a heuristic approach.
 
     Args:
-        D: np.ndarray
-            The target values.
-        omega: np.ndarray
-            The support points.
-        tol: float
-            The tolerance level. (0 < tol <= 1)
+        config:
+            Configuration object.
+        prep:
+            Preparation object.
+        has_sigma:
+            Whether the model uses kernel widths as parameters.
 
     Returns:
-        omega: float
-            The threshold value ω.
+        The heuristic kernel centers and, if applicable, the kernel widths."""
+
+    mu_S = np.linspace(
+        0.0,
+        _y_tol_fit(prep.scaled_D, prep.omega),
+        config.n,
+        dtype=FLOAT_DTYPE,
+    )
+
+    sigma_S = (
+        _fat_tol_fit(
+            omega=prep.omega,
+            D=prep.scaled_D,
+            mu=mu_S,
+            model_name=config.model_name,
+            widths=config.widths,
+            window=config.window,
+        )
+        if has_sigma
+        else None
+    )
+
+    return mu_S, sigma_S
+
+
+def _y_tol_fit(
+    D: np.ndarray,
+    omega: np.ndarray,
+    y_tol: float = 0.01,
+) -> Tuple[float, float]:
+    """
+    Computes the threshold :math:`\omega` at a certain tolerance level.
+
+    Args:
+        D:
+            The target values.
+        omega:
+            The support points.
+        y_tol:
+            Tolerance parameter used to determine an effective frequency threshold.
+
+    Returns:
+        The threshold value :math:`\omega`.
     """
 
     I = np.trapezoid(D, omega)
 
     for i in range(len(omega)):
         T_I = np.trapezoid(D[:i], omega[:i])
-        if T_I / I >= np.abs(1.0 - tol):
+        if T_I / I >= np.abs(1.0 - y_tol):
             return omega[i]
     return None
 
@@ -276,8 +322,7 @@ def _width_start_values(
             The target values.
 
     Returns:
-        Tuple[float, float]
-            The lower and upper bounds of the kernel widths.
+        The lower and upper bounds of the kernel widths.
     """
     e = np.trapezoid(omega * D, omega)
     var = np.trapezoid((omega - e) ** 2 * D, omega)
@@ -290,30 +335,29 @@ def _fat_tol_fit(
     D: np.ndarray,
     mu: np.ndarray,
     model_name: str,
-    tol: float,
     widths: int,
     window: int,
+    fat_tol: float = 0.01,
 ) -> np.ndarray:
     """
-    Finds the best kernel widths, in order to fit the data.
+    Find the best kernel widths to fit the data.
 
     Args:
-        omega: np.ndarray
+        omega:
             The support points.
-        D: np.ndarray
+        D:
             The target values.
-        mu: np.ndarray
+        mu:
             The support points for the model.
-        tol: float
-            The tolerance level.
-        widths: int
+        widths:
             The total number of kernel widths.
-        window: int
+        window:
             The window size when searching for the optimal kernel widths.
+        fat_tol:
+            Tolerance used when selecting optimal kernel widths for the model.
 
     Returns:
-        np.ndarray
-            The best kernel widths under the given specifications.
+        The best kernel widths under the given specifications.
     """
 
     n_mu, idx_peak = len(mu), np.argmax(D)
@@ -341,7 +385,7 @@ def _fat_tol_fit(
             continue
         _peak_val = _D[idx_peak]
         _eps = np.max(np.abs(_peak_val - peak_val)) / peak_val
-        if _eps <= np.abs(1.0 - tol):
+        if _eps <= np.abs(1.0 - fat_tol):
             best_sigma = np.copy(_sigma)
             break
 

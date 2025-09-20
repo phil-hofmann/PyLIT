@@ -35,9 +35,6 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_css_files = [
-    "css/custom.css",
-]
 html_logo = "logo.png"
 html_title = ""
 html_theme_options = {
@@ -45,11 +42,10 @@ html_theme_options = {
         "text": "",
     },
     "navbar_end": ["navbar-icon-links"],
-     "secondary_sidebar_items": ["page-toc"],
+    "secondary_sidebar_items": [],
     "navbar_align": "content",
     "show_prev_next": False,
     "announcement": "v0.2",
-    
 }
 html_theme_options.update(
     {
@@ -64,3 +60,8 @@ html_theme_options.update(
         "navigation_depth": 4,
     }
 )
+html_sidebars = {
+    "installation": [],
+    "get-started": [],
+    "modules": [],
+}

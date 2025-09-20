@@ -24,22 +24,22 @@ class Configuration:
             Output path of the Preparation dataclass. | None = None
         path_res:
             Output path of the Result dataclass. | None = None
+        selection_name:
+            Strategy for selecting the models parameters. Choices include
+            ``simulated_annealing`` (default) and ``heuristic``.
+        n:
+            Number of support points in the frequency domain :math:`\omega`.
+        window:
+            The window size when searching for the optimal kernel widths.
+            Only used in ``heuristic``.
+        widths:
+            The total number of kernel widths. 
         non_negative:
             Enforces non-negativity for the Default model.
         detailed_balance:
             If ``True``, imposes the detailed balance condition.
         model_name:
             Name of the kernel model to use for optimization.
-        n:
-            Number of support points in the frequency domain :math:`\omega`.
-        y_tol:
-            Tolerance parameter used to determine an effective frequency threshold.
-        window:
-            The window size when searching for the optimal kernel widths.
-        widths:
-            The total number of kernel widths.
-        fat_tol:
-            Tolerance used when selecting optimal kernel widths for the model. 
         method_name:
             Optimization method to be applied. Choices include regularization- and fit-based approaches.
         lambd:
@@ -72,6 +72,12 @@ class Configuration:
     path_prep: Path | None = None
     path_res: Path | None = None
 
+    # Parameter selection
+    selection_name: Literal["simulated_annealing", "heuristic"] = "simulated_annealing"
+    n: int = 100
+    window: int = 5 
+    widths: int = 50
+
     # Model
     non_negative: bool = True
     detailed_balance: bool = True
@@ -81,11 +87,6 @@ class Configuration:
         "Cauchy",
         "Uniform",
     ] = "Gauss"
-    n: int = 100
-    y_tol: float = 0.01
-    window: int = 5
-    widths: int = 50
-    fat_tol: float = 0.01
 
     # Method
     method_name: Literal[

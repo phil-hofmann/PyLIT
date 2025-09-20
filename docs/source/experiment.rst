@@ -1,7 +1,5 @@
 Experiment
 ==========
 
-.. .. automodule:: pylit.experiment
-..    :members: 
-..    :undoc-members: 
-..    :show-inheritance: 
+.. automodule:: pylit.experiment
+    :members: 

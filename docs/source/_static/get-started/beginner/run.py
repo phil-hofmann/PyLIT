@@ -4,11 +4,10 @@ if __name__ == "__main__":
     from pylit import prepare, itransform
     from pylit.core.data_classes import Configuration
 
-    path_F = Path("/Users/philhofmann/Documents/pylit-workspace/data/raw_F/F10.csv")
-    path_D = Path("/Users/philhofmann/Documents/pylit-workspace/data/raw_S/S10.csv")
-
-    path_S = Path("/Users/philhofmann/Downloads/my_S.csv")
-    path_L_S = Path("/Users/philhofmann/Downloads/my_L_S.csv")
+    path_F = Path(__file__).parent / "F.csv"
+    path_D = Path(__file__).parent / "S.csv"
+    path_S = Path(__file__).parent / "S_out.csv"
+    path_L_S = Path(__file__).parent / "L_S_out.csv"
 
     lambdas = np.array([10e-4], dtype=np.float64)
 
@@ -30,10 +29,9 @@ if __name__ == "__main__":
     prep = prepare(config)
     res = itransform(config, prep)
 
-    # print(f"beta: {prep.beta}")
-    # print(f"mu: {res.mu}, sigma: {res.sigma}")
+    print(f"beta: {prep.beta}")
+    print(f"mu: {res.mu}, sigma: {res.sigma}")
 
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
     n = len(res.S)
@@ -52,5 +50,3 @@ if __name__ == "__main__":
         plt.plot(prep.tau, eps_s[0])
     plt.plot(prep.tau, prep.eps_D[0], color="black", linestyle="--")
     plt.show()
-
-    # print("Shape S=", np.array(res.S).shape)

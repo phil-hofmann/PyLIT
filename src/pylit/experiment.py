@@ -17,15 +17,62 @@ from pylit.utils import (
     moments,
     import_xY,
     save_to_json,
-    y_tol_fit,
-    fat_tol_fit,
 )
+from pylit.core import selection
 from pylit.core.data_classes import Configuration, Preparation, Result
 from pylit.core.decorators import linear_scaling_decorator, detailed_balance_decorator
 from pylit.optimizer import adaptiveRF
+from scipy.optimize import nnls
 
 
 def prepare(config: Configuration) -> Preparation:
+    r"""Prepare input data and compute quantities required for performing the inverse Laplace transform.
+
+    This function loads the imaginary-time correlation function
+    :math:`F(q, \tau)` and the default model :math:`D(q, \omega)` for the
+    dynamic structure factor :math:`S(q, \omega)` from CSV files specified in
+    the configuration, processes them, and computes the quantities
+    required for performing the inverse Laplace transform.
+
+    Steps performed
+    ---------------
+    1. Load :math:`F(q, \tau)` from the specified path
+
+       - Determine the inverse temperature :math:`\beta = \max(\tau)`,
+       - Scale :math:`F(q, \tau)` by its maximum value in :math:`\tau`.
+
+    2. Load :math:`D(q, \omega)` from the specified path
+
+       - Optionally enforce non-negativity,
+       - Optionally apply detailed balance :math:`D(-\omega) = e^{-\beta \omega} D(\omega)`.
+
+    3. Compute the following quantities
+
+        - Integrals :math:`\int D(q, \omega)\, d\omega` (trapezoidal rule),
+        - Normalize the default model :math:`\widehat{D}(q, \omega)` by its integrals in :math:`\omega`,
+        - Expected value :math:`\mu(D)`,
+        - Standard deviation :math:`\sigma(D)`,
+        - Statistical moments :math:`\mu_\alpha(D)` for predefined orders :math:`\alpha`,
+        - Forward Laplace transform :math:`\widehat{D}(\tau)`,
+        - Absolute error :math:`|\widehat{D}(\tau) - F_{\text{scaled}}(\tau)|`,
+        - Maximal error across all :math:`\tau`.
+
+    4. Store all results in a :class:`Preparation<pylit.core.data_classes.Preparation>` object.
+
+    Args:
+        config:
+            Configuration object containing file paths and flags controlling
+            data preprocessing (e.g., enforcing non-negativity, detailed balance).
+
+    Returns:
+        Preparation:
+            Data container holding both raw and processed quantities.
+
+    Notes:
+        If ``config.path_prep`` is provided, the :class:`Preparation`
+        object is serialized and saved to JSON.
+    """
+
     # τ, F, β, Scaled F
     tau, F = import_xY(config.path_F)
     beta = np.max(tau)
@@ -103,32 +150,17 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     method_func = getattr(methods, config.method_name)
     optimizer_func = getattr(optimizer, config.optimizer_name)
+    selection_func = getattr(selection, config.selection_name)
 
-    # TODO TC
-    omega_l, omega_r = 0.0, y_tol_fit(prep.scaled_D, prep.omega, config.y_tol)
-    mu_S = np.linspace(omega_l, omega_r, config.n, dtype=FLOAT_DTYPE)
-
-    # TODO TC
-    sigma_S = (
-        fat_tol_fit(
-            omega=prep.omega,
-            D=prep.scaled_D,
-            mu=mu_S,
-            model_name=config.model_name,
-            tol=config.fat_tol,
-            widths=config.widths,
-            window=config.window,
-        )
-        if "sigma" in model_params
-        else None
-    )
+    has_sigma = "sigma" in model_params
+    mu_S, sigma_S = selection_func(config, prep, has_sigma)
 
     mu_S *= prep.beta
-    sigma_S = sigma_S * prep.beta if sigma_S is not None else None
+    sigma_S = sigma_S * prep.beta if has_sigma else None
 
     model = (
         ModelClass(tau=prep.tau, mu=mu_S, sigma=sigma_S)
-        if sigma_S is not None
+        if has_sigma
         else ModelClass(tau=prep.tau, mu=mu_S)
     )
 
@@ -152,7 +184,8 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
 
     # Optimize
     R = model.regression_matrix
-    m = R.shape[1] # TODO TC: not needed, when c0_guess is used
+    # m = R.shape[1]
+    c0_lsq, _ = nnls(args["E"], args["D"])
     first_param_len = len(model.params[0])
     solutions = []
 
@@ -164,7 +197,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
             c0 = (
                 config.c0[i] / _max_F
                 if config.c0 is not None
-                else np.zeros(m, dtype=FLOAT_DTYPE) # TODO TC: c0_guess
+                else c0_lsq  # np.zeros(m, dtype=FLOAT_DTYPE)
             )
             if config.adaptive:
 
@@ -268,11 +301,13 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     max_eps_S = np.amax(eps_S, axis=1)
 
     if config.path_S is not None:
-        S_df = np.concatenate([np.array([prep.omega]).T, np.array(S)[:,0].T], axis=1)
+        S_df = np.concatenate([np.array([prep.omega]).T, np.array(S)[:, 0].T], axis=1)
         pd.DataFrame(S_df).to_csv(config.path_S, index=False, header=False)
 
     if config.path_L_S is not None:
-        L_S_df = np.concatenate([np.array([prep.tau]).T, np.array(forward_S)[:,0].T], axis=1)
+        L_S_df = np.concatenate(
+            [np.array([prep.tau]).T, np.array(forward_S)[:, 0].T], axis=1
+        )
         pd.DataFrame(L_S_df).to_csv(config.path_L_S, index=False, header=False)
 
     res = Result(
