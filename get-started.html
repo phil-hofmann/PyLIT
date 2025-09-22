@@ -335,15 +335,39 @@
                   
   <section id="get-started">
 <h1>Get Started<a class="headerlink" href="#get-started" title="Link to this heading">#</a></h1>
-<p>Two example configurations are provided in the <code class="docutils literal notranslate"><span class="pre">get-started/</span></code> folder which you can access <a class="reference external" href="_static/get-started/">here</a>.</p>
+<p><strong>Before running</strong> any example, you must first follow the installation guide described in <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>.
+We recommend setting up the environment with <strong>Poetry</strong>.
+If you are using <strong>Anaconda</strong>, note that the ESA synthetic data example requires some adjustments.</p>
+<p>Two example configurations are provided in the <code class="docutils literal notranslate"><span class="pre">PyLIT/examples/</span></code> folder which you can
+download <a class="reference external" href="https://github.com/phil-hofmann/PyLIT/archive/refs/heads/main.zip">here</a>.</p>
 <ul>
 <li><p><strong>Beginner</strong></p>
-<p>A minimal setup with synthetic test data.
-Useful to quickly test the installation and understand the basic workflow.</p>
+<p>A minimal setup with synthetic test data, designed to help you quickly verify that the
+installation was successful and to introduce you to the basic workflow of PyLIT.</p>
+<p>Once installed, you can run the beginner example by executing the provided <code class="docutils literal notranslate"><span class="pre">run.py</span></code> script.
+For instance, if you have set up your environment with Poetry, you can run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>run.py
+</pre></div>
+</div>
+<p>This example is intentionally simple, so you can focus on understanding the fundamental steps before moving on to more advanced features.
+It demonstrates the <strong>core workflow of PyLIT</strong>:</p>
+<ol class="arabic simple">
+<li><p>Define the required input and output paths.</p></li>
+<li><p>Instantiate a <strong>configuration object</strong>, which provides access to a wide range of options for controlling the inversion process.</p></li>
+<li><p>Call <strong>``prepare``</strong> to load and preprocess the input CSV files (<code class="docutils literal notranslate"><span class="pre">F.csv</span></code> and <code class="docutils literal notranslate"><span class="pre">D.csv</span></code>).</p></li>
+<li><p>After preparation, perform the inversion using <strong>``itransform``</strong> to obtain the double-sided inverse Laplace transform.</p></li>
+</ol>
 </li>
 <li><p><strong>ESA synthetic data</strong></p>
-<p>A more detailed example using realistic synthetic data.
-Useful to explore more features, tuning options, and the effect of priors.</p>
+<p>A more detailed example that uses realistic synthetic data.
+This setup is intended for users who want to explore more advanced features, experiment with tuning options,
+and study how priors affect the inversion.</p>
+<p>To run this example, you only need to make the provided bash script executable and then execute it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>chmod<span class="w"> </span>+x<span class="w"> </span>run_sample_usage_files.sh
+./run_sample_usage_files.sh
+</pre></div>
+</div>
+<p>If you are working with Anaconda, you may need to adapt the script to your environment.</p>
 </li>
 </ul>
 <section id="note">
