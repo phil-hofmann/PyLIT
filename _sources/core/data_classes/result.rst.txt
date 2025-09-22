@@ -1,7 +1,6 @@
 Result
 ======
 
-.. automodule:: pylit.core.data_classes
-   :members: Result
+.. autoclass:: pylit.core.data_classes.Result
    :undoc-members:
    :show-inheritance:

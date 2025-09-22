@@ -5,44 +5,59 @@ Optimizer
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    
    optimizer/adam
    optimizer/adaptive
    optimizer/nesterov
    optimizer/nnls
 
-Interface
----------
-All optimization functions in PyLIT solve the constrained least-squares optimization problem
+All optimization functions in **PyLIT** solve the constrained least-squares optimization problem
 
-    .. math::
-      :label: lsq-problem
+.. math::
+   :label: lsq-problem
 
-      \min_{x \geq 0} \; \frac{1}{2} \| R x - F \|^2
+   \min_{\boldsymbol{\alpha} \geq 0} \; \frac{1}{2} \left\| \sum_i \alpha_i \widehat S_i (\tau)  - F(\tau)\right\|^2_{L^2(\mathbb{R})} + \lambda r(\boldsymbol{\alpha}; D),
+   
+iteratively and *must follow a consistent interface*. Specifically:
 
-iteratively and *must follow a consistent interface*.
+- :math:`\boldsymbol{\alpha} = (\alpha_1, \dots, \alpha_n)` are the coefficients (and optimization variables).
+- :math:`\widehat S_i (\tau)` are the transformed basis functions for each :math:`S_i`.
+- :math:`F(\tau)` is the target function.
+- :math:`r(\boldsymbol{\alpha}; D, E)` is a method-specific regularization term,
+- :math:`\lambda \ge 0` is the regularization parameter.
+- :math:`D` is an optional default model,
+
 The following template specifies how an optimizer function should look, including the required inputs, optional parameters, and expected output.
 
 Template
-^^^^^^^^
+--------
 
 .. code-block:: python
+   
+   import numpy as np
+   import numba as nb
 
-    def optimizer_template(
-        R: np.ndarray,
-        F: np.ndarray,
-        x0: np.ndarray,
-        method: Method,
-        maxiter: INT_DTYPE = None,
-        tol: FLOAT_DTYPE = None,
-        svd: bool = False,
-        protocol: bool = False,
-    ) -> Solution:
-      """
+   from pylit.settings import FLOAT_DTYPE, INT_DTYPE, TOL
+   from pylit.njit_utils import svd_optim
+   from pylit.core.data_classes import Method, Solution
+
+   def optimizer_template(
+      R: np.ndarray,
+      F: np.ndarray,
+      x0: np.ndarray,
+      method: Method,
+      maxiter: INT_DTYPE = None,
+      tol: FLOAT_DTYPE = None,
+      svd: bool = False,
+      protocol: bool = False,
+   ) -> Solution:
+      r"""
       Template for an optimization function in PyLIT.
 
       This function performs type conversions, default handling, 
-      and delegates the actual optimization to the private function ``_optimizer_template``.
+      and delegates the actual optimization to the private function
+      ``_optimizer_template``.
       """
 
       # Convert types
@@ -57,16 +72,16 @@ Template
 
       # Call subroutine
       x = _optimizer_template(
-        R,
-        F,
-        method.f,
-        method.grad_f,
-        x0,
-        method.lr,
-        maxiter,
-        tol,
-        protocol,
-        svd,
+         R,
+         F,
+         method.f,
+         method.grad_f,
+         x0,
+         method.lr,
+         maxiter,
+         tol,
+         protocol,
+         svd,
       )
 
       # Compute objective
@@ -77,14 +92,14 @@ Template
 
       def _optimizer_template(
          R, F, f, grad_f, x0, lr, maxiter, tol, protocol, svd
-         ) -> np.ndarray:
-        """
-        Template for an optimization subroutine in PyLIT.
-        """
-        raise NotImplementedError("This is only a template.")
+      ) -> np.ndarray:
+         """
+         Template for an optimization subroutine in PyLIT.
+         """
+         raise NotImplementedError("This is only a template.")
 
 Parameters
-^^^^^^^^^^
+----------
 
 - ``R`` (np.ndarray):
    Matrix of shape ``(m, n)`` representing the system to solve.
@@ -115,14 +130,14 @@ Parameters
    (default: ``False``).
 
 Returns
-^^^^^^^
+-------
 
 - ``Solution``:
    The Solution object containing the final iterate ``x``, the objective function value ``eps``,
    and the residuum ``res`` from :eq:`(*) <lsq-problem>`.
 
 Notes
-^^^^^
+-----
 
 - This template serves as a **blueprint**: it defines how optimizer functions
   **need** to be structured. Actual implementations (e.g., ADAM, Nesterov) 

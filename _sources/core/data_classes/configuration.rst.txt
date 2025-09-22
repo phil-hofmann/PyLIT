@@ -1,7 +1,6 @@
 Configuration
 =============
 
-.. automodule:: pylit.core.data_classes
-   :members: Configuration
+.. autoclass:: pylit.core.data_classes.Configuration
    :undoc-members:
    :show-inheritance:
