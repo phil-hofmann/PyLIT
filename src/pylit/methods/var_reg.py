@@ -28,23 +28,23 @@ def var_reg(omegas: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     .. math::
 
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2
-        + \frac{1}{2} \lambda \, \mathrm{Var}_{\boldsymbol{p}}[\boldsymbol{\omega}], \quad \boldsymbol{p} = E \boldsymbol{\alpha},
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2
+        + \frac{n}{2} \lambda \, \mathrm{Var}_{\boldsymbol{p}}[\boldsymbol{\omega}], \quad \boldsymbol{p} = E \boldsymbol{\alpha},
 
     with the gradient
 
     .. math::
 
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top (\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F})
-        + \lambda \, (\mathbb{E}_{\boldsymbol{p}}[\boldsymbol{\omega}] - \bar{\omega}),
+        \boldsymbol{R}^\top (\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F})
+        + \lambda \, (\mathbb{E}_{\boldsymbol{p}}[\boldsymbol{\omega}] - \bar{\omega})
         \, E^\top \boldsymbol{\omega},
 
     the learning rate
 
     .. math::
 
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + (\lambda n / k^2) \, \| \boldsymbol{E} \boldsymbol{\omega} \| \|\boldsymbol{E}\| \|\boldsymbol{\omega}\|}
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + (\lambda / k^2) \, \| \boldsymbol{E} \boldsymbol{\omega} \| \|\boldsymbol{E}\| \|\boldsymbol{\omega}\|}
 
     and the solution
 
@@ -103,16 +103,16 @@ def _var_reg(omegas, E, lambd) -> Method:
 
         p = E_ @ x
         E_p = np.mean(p * omegas)
-        V_p = np.mean((E_p - omegas) ** 2)
+        V_p = np.sum((E_p - omegas) ** 2)
 
-        return FLOAT_DTYPE(0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * V_p)
+        return FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * V_p)
 
     @njit(fastmath=FASTMATH)
     def grad_f(x, R, F) -> np.ndarray:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
         p = E_ @ x
@@ -120,7 +120,7 @@ def _var_reg(omegas, E, lambd) -> Method:
         omegas_mean = np.mean(omegas)
 
         return np.asarray(
-            R.T @ (R @ x - F) / n + lambd * (E_p - omegas_mean) * E_.T @ omegas
+            R.T @ (R @ x - F) + lambd * (E_p - omegas_mean) * E_.T @ omegas
         ).astype(FLOAT_DTYPE)
 
     @njit(fastmath=FASTMATH)
@@ -131,7 +131,7 @@ def _var_reg(omegas, E, lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         k = len(omegas)
         E_ = E[:, :m]
 
@@ -142,6 +142,6 @@ def _var_reg(omegas, E, lambd) -> Method:
             / k**2
         )
 
-        return FLOAT_DTYPE(n / (np.linalg.norm(R.T @ R) + lambd * n * norm))
+        return FLOAT_DTYPE(1.0 / (np.linalg.norm(R.T @ R) + lambd * norm))
 
     return Method("var_reg_fit", f, grad_f, solution, lr)

@@ -33,7 +33,7 @@ class Configuration:
             The window size when searching for the optimal kernel widths.
             Only used in ``heuristic``.
         widths:
-            The total number of kernel widths. 
+            The total number of kernel widths.
         non_negative:
             Enforces non-negativity for the Default model.
         detailed_balance:
@@ -75,8 +75,8 @@ class Configuration:
     # Parameter selection
     selection_name: Literal["simulated_annealing", "heuristic"] = "simulated_annealing"
     n: int = 100
-    window: int = 5 
-    widths: int = 50
+    window: int = 5
+    widths: int = 5
 
     # Model
     non_negative: bool = True
@@ -107,8 +107,8 @@ class Configuration:
         "adam",
     ] = "nesterov"
     tol: float = 10e-16
-    maxiter: int = 1000
-    adaptive: bool = True
+    maxiter: int = 1_000
+    adaptive: bool = False
     adaptive_residuum_mode: bool = False
     c0: np.ndarray | None = None
     svd: bool = False
@@ -126,17 +126,17 @@ class Preparation:
     r"""Represents the output of the preparation of the data.
 
     Args:
-        tau: 
+        tau:
             Discrete time axis :math:`\tau` on which the input data :math:`F(\tau)` is defined.
-        F: 
+        F:
             Raw input data defined on :math:`\tau`.
-        beta: 
+        beta:
             Inverse temperature parameter :math:`\beta = 1/T`.
-        max_F: 
+        max_F:
             Maximum value of :math:`F(\tau)`, used for normalization.
-        scaled_F: 
+        scaled_F:
             Normalized version of :math:`F(\tau)` to improve numerical stability.
-        omega: 
+        omega:
             Discrete frequency axis :math:`\omega` on which the default model :math:`D(\omega)` is defined.
         D:
             Default model for the dynamic structure factor :math:`S(\omega)`.
@@ -151,7 +151,7 @@ class Preparation:
         moments_D:
             The i-th entry corresponds to the moment :math:`\mu_i = \int d\omega D(\omega)`, with indices covering :math:`i=-1, 0, 1, ..., 10`.
         forward_D:
-            Laplace transform of ``scaled_D`` onto :math:`\tau`, computed using the trapezoidal rule as 
+            Laplace transform of ``scaled_D`` onto :math:`\tau`, computed using the trapezoidal rule as
 
             .. math ::
 
@@ -191,7 +191,7 @@ class Result:
 
     Args:
         eps:
-            The values of the objective functions evaluated at the solutions ``coefficients``. 
+            The values of the objective functions evaluated at the solutions ``coefficients``.
         residuals: np.ndarray
             The residual norms from :eq:`(*) <lsq-problem>` evaluated at the solutions ``coefficients``.
         mu:
@@ -205,12 +205,12 @@ class Result:
 
             .. math::
                 S_i = \sum_j \text{coefficients}_j K_j(\omega_i).
-            
+
             *The scaling and detailed balance corrections are not included here,
             as they are applied automatically by*
             :func:`~pylit.core.decorators.linear_scaling_decorator` *and*
             :func:`~pylit.core.decorators.detailed_balance_decorator`.
-        eps_S: 
+        eps_S:
         exp_S: np.ndarray
             Expected value (first moment) of S, computed as
 
@@ -229,7 +229,7 @@ class Result:
             .. math::
                 \mu_\alpha = \sum_i \omega_i^\alpha S_i
         forward_S:
-            Forward-transformed S onto the original :math:`\tau` grid, 
+            Forward-transformed S onto the original :math:`\tau` grid,
             computed via a kernel or Laplace transform:
 
             .. math::
@@ -239,8 +239,8 @@ class Result:
             as they are applied automatically by*
             :func:`~pylit.core.decorators.linear_scaling_decorator` *and*
             :func:`~pylit.core.decorators.detailed_balance_decorator`.
-        eps_S: 
-            Pointwise reconstruction error between the forward-transformed 
+        eps_S:
+            Pointwise reconstruction error between the forward-transformed
             model and the observed data.
         max_eps_S:
             Maximum absolute reconstruction error in ``eps_S``.
@@ -298,7 +298,7 @@ class Solution:
     """Represents a solution to an optimization problem.
 
     Args:
-        x: 
+        x:
             The final iterate of the optimization, representing the solution vector.
         eps:
             The value of the objective function (depending on the chosen method) evaluated at the solution ``x``.

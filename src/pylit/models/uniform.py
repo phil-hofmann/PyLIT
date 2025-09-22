@@ -31,7 +31,24 @@ class Uniform(LinearRegressionModel):
         omega: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray:
-        """The uniform kernel function."""
+        r"""Evaluate the uniform kernel function for a given set of parameters.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.kernel`.
+
+        Args:
+            omega:
+                Discrete frequency axis.
+            param:
+                Parameter tuple [k], where k indexes the interval
+                [mu_k, mu_{k+1}] of the uniform kernel support.
+
+        Returns:
+            Values of the uniform kernel
+
+            .. math::
+                K(\omega; \mu_k, \mu_{k+1}) =
+                \frac{\mathbf{1}_{[\mu_k, \mu_{k+1})}(\omega)}{\mu_{k+1} - \mu_k},
+        """
         k = int(param[0])
         a, b = self._mu[k], self._mu[k + 1]
         return (np.heaviside(omega - a, 1.0) - np.heaviside(omega - b, 1.0)) / (b - a)
@@ -41,7 +58,27 @@ class Uniform(LinearRegressionModel):
         tau: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray[FLOAT_DTYPE]:
-        """The Laplace transform of the uniform kernel."""
+        r"""Evaluate the Laplace-transformed uniform kernel at the discrete time axis.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.ltransform`.
+
+        Args:
+            tau: 
+                Discrete time axis.
+            param: 
+                Parameter tuple [k], where k indexes the interval
+                [mu_k, mu_{k+1}] of the uniform kernel support.
+
+        Returns:
+            Values of the Laplace-transformed uniform kernel
+
+            .. math::
+                \widehat{K}(\tau; \mu_k, \mu_{k+1}) =
+                \begin{cases}
+                    1, & \tau = 0, \\
+                    \frac{e^{-\tau \mu_{k+1}} - e^{-\tau \mu_k}}{-\tau (\mu_{k+1}-\mu_k)}, & \tau \neq 0.
+                \end{cases}
+        """
         k = int(param[0])
         a, b = self._mu[k], self._mu[k + 1]
         return np.where(

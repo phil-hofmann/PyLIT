@@ -7,8 +7,8 @@ The easiest way to install is via pip:
 
     pip install git+https://github.com/phil-hofmann/pylit.git
 
-(If you don't have pip installed, follow the instructions here: 
-`Installing pip <https://pip.pypa.io/en/stable/installation/>`_.)
+If you don't have pip installed, follow the instructions here: 
+`Installing pip <https://pip.pypa.io/en/stable/installation/>`_.
 
 
 - If you would like to use an environment-based setup, please follow these guides:

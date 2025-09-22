@@ -32,16 +32,16 @@ def max_entropy_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     .. math::
 
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \lambda \frac{1}{n} \sum_{i=1}^n (\boldsymbol{E} \boldsymbol{\alpha})_i \log \frac{(\boldsymbol{E} \boldsymbol{\alpha})_i}{D_i},
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \lambda \sum_{i=1}^n (\boldsymbol{E} \boldsymbol{\alpha})_i \log \frac{(\boldsymbol{E} \boldsymbol{\alpha})_i}{D_i},
 
     with the gradient
 
     .. math::
 
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \lambda \frac{1}{n} \boldsymbol{E}^\top(\log \boldsymbol{E} \boldsymbol{\alpha} - \log \boldsymbol{D} + 1),
+        \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \boldsymbol{E}^\top(\log \boldsymbol{E} \boldsymbol{\alpha} - \log \boldsymbol{D} + 1),
 
     the learning rate
 
@@ -111,7 +111,7 @@ def _max_entropy_fit(D, E, lambd) -> Method:
         log_p = np.log(p)
 
         return FLOAT_DTYPE(
-            0.5 * np.mean((R @ x - F) ** 2) + lambd * np.mean(p * (log_p - log_q))
+            0.5 * np.sum((R @ x - F) ** 2) + lambd * np.sum(q - p + p * (log_p - log_q))
         )
 
     @njit(fastmath=FASTMATH)
@@ -119,7 +119,7 @@ def _max_entropy_fit(D, E, lambd) -> Method:
         x = np.asarray(x).astype(np.float64)
         R = np.asarray(R).astype(np.float64)
         F = np.asarray(F).astype(np.float64)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
         p = E_ @ x
@@ -128,10 +128,10 @@ def _max_entropy_fit(D, E, lambd) -> Method:
         log_p = np.log(p_hat)
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
-        grad_2 = lambd * (E_.T @ (log_p - log_q + 1)) / n
+        grad_2 = lambd * (E_.T @ (log_p - log_q))
 
         # Total gradient
         grad = grad_1 + grad_2
@@ -145,11 +145,11 @@ def _max_entropy_fit(D, E, lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
         return FLOAT_DTYPE(
-            n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E_) ** 2)
+            1 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E_) ** 2)
         )
 
     return Method("max_entropy_fit", f, grad_f, solution, lr)

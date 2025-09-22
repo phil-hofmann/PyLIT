@@ -17,7 +17,7 @@ def simulated_annealing(
     has_sigma: bool,
     max_iter: int = 200,
 ) -> np.ndarray:
-    """
+    r"""
     Perform parameter selection using simulated annealing.
 
     This method optimizes kernel centers and widths by iteratively proposing
@@ -53,7 +53,7 @@ def simulated_annealing(
         np.amax(interval_widths) * np.amin(interval_widths)
     )
     sigma = np.geomspace(
-        2 * geometric_mean_of_max_min, geometric_mean_of_max_min / 10.0, config.widhts
+        2 * geometric_mean_of_max_min, geometric_mean_of_max_min / 10.0, config.widths
     )
 
     # ````
@@ -284,7 +284,7 @@ def _y_tol_fit(
     omega: np.ndarray,
     y_tol: float = 0.01,
 ) -> Tuple[float, float]:
-    """
+    r"""
     Computes the threshold :math:`\omega` at a certain tolerance level.
 
     Args:
@@ -312,7 +312,7 @@ def _width_start_values(
     omega: np.ndarray,
     D: np.ndarray,
 ) -> Tuple[float, float]:
-    """
+    r"""
     Initialise start values for the kernel widths.
 
     Args:
@@ -339,7 +339,7 @@ def _fat_tol_fit(
     window: int,
     fat_tol: float = 0.01,
 ) -> np.ndarray:
-    """
+    r"""
     Find the best kernel widths to fit the data.
 
     Args:

@@ -290,7 +290,7 @@ def generate_multi_index_set(dimension: int, degrees: List[int]) -> np.ndarray:
 
     Args:
         dimension:
-            Length of multi-indices. (In practice, only ``dimension=1`` is used.)
+            Length of multi-indices.
         degrees:
             Maximum degree in each dimension.
 

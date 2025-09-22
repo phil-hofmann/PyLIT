@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.abspath(".."))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "PyLIT"
-copyright = "2025, Phil-Alexander Hofmann, Alexander Benedix Robles, Thomas Chuna"
-author = "Phil-Alexander Hofmann, Alexander Benedix Robles, Thomas Chuna"
+copyright = "2025, Phil-Alexander Hofmann, Alexander Benedix Robles, Thomas Chuna, Tobias Dornheim, Michael Hecht"
+author = "Phil-Alexander Hofmann, Alexander Benedix Robles, Thomas Chuna, Tobias Dornheim, Michael Hecht"
 release = "0.1"
 
 # -- General configuration ---------------------------------------------------

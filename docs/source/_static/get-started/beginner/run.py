@@ -4,31 +4,66 @@ if __name__ == "__main__":
     from pylit import prepare, itransform
     from pylit.core.data_classes import Configuration
 
-    path_F = Path(__file__).parent / "F.csv"
-    path_D = Path(__file__).parent / "S.csv"
+    path_F = Path(__file__).parent / "F10.csv"
+    path_D = Path(__file__).parent / "S10.csv"
     path_S = Path(__file__).parent / "S_out.csv"
     path_L_S = Path(__file__).parent / "L_S_out.csv"
-
-    lambdas = np.array([10e-4], dtype=np.float64)
+    path_prep = Path(__file__).parent / "prep.json"
+    path_res = Path(__file__).parent / "res.json"
+    lambdas = np.array([10e-1], dtype=np.float64)
 
     config = Configuration(
         path_F=path_F,
         path_D=path_D,
         path_S=path_S,
         path_L_S=path_L_S,
-        adaptive=False,
-        optimizer_name="adam",
-        method_name="l2_fit",
-        lambd=lambdas,
-        maxiter=1_000,
+        path_prep=path_prep,
+        path_res=path_res,
+        ### Parameter selection default values:
+        selection_name="simulated_annealing",
+        n=100,
+        # window=5,
+        widths=5,
+        ### Model default values:
+        non_negative=True,
         detailed_balance=True,
         model_name="Gauss",
-        protocol=True,
+        ### Method:
+        method_name="l2_fit",
+        lambd=lambdas,
+        ### Optimizer:
+        optimizer_name="nesterov",  # default value
         tol=10e-10,
+        adaptive=False,
+        adaptive_residuum_mode=False,  # default value
+        maxiter=1_000,  # default value
+        c0=None,  # default value
+        svd=False,  # default value
+        protocol=True,
     )
-    prep = prepare(config)
-    res = itransform(config, prep)
 
+    # Shortcut:
+    config = Configuration(
+        path_F=path_F,
+        path_D=path_D,
+        path_S=path_S,
+        path_L_S=path_L_S,
+        path_prep=path_prep,
+        path_res=path_res,
+        ### Method:
+        method_name="l2_fit",
+        lambd=lambdas,
+        ### Optimizer:
+        tol=10e-10,
+        adaptive=False,
+        protocol=True,
+    )
+
+    print(f"✅ Configuration instantiated.")
+    prep = prepare(config)
+    print(f"✅ Prepared data.")
+    res = itransform(config, prep)
+    print(f"✅ Finished inverse transform.")
     print(f"beta: {prep.beta}")
     print(f"mu: {res.mu}, sigma: {res.sigma}")
 

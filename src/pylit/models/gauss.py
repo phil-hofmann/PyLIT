@@ -32,7 +32,24 @@ class Gauss(LinearRegressionModel):
         omega: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray:
-        """The Gaussian kernel function."""
+        r"""Evaluate the Gaussian kernel function for a given set of parameters.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.kernel`.
+
+        Args:
+            omega:
+                Discrete frequency axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Values of the Gaussian kernel
+
+            .. math::
+                K(\omega; \mu, \sigma) =
+                \frac{1}{\sigma \sqrt{2 \pi}} \exp\Big(-\frac{1}{2} \frac{(\omega-\mu)^2}{\sigma^2}\Big).
+        """
+
         mu, sigma = param
         return (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
             -0.5 * (omega - mu) ** 2 / sigma**2
@@ -43,6 +60,23 @@ class Gauss(LinearRegressionModel):
         tau: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray[FLOAT_DTYPE]:
-        """The Laplace transform of the Gaussian kernel."""
+        r"""Evaluate the Laplace-transformed Gaussian kernel at the discrete time axis.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.ltransform`.
+
+        Args:
+            tau:
+                Discrete time axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Values of the Laplace-transformed Gaussian kernel
+
+            .. math::
+                \widehat{K}(\tau; \mu, \sigma) =
+                \exp\Big(-\mu \tau + \frac{1}{2} \sigma^2 \tau^2\Big).
+        """
+
         mu, sigma = param
         return np.exp(-mu * tau + 0.5 * sigma**2 * tau**2)

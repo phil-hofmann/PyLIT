@@ -25,28 +25,28 @@ def l2_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
         f(u, w, \lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
         \frac{1}{2} \lambda \| u - w \|_{L^2(\mathbb{R})}^2,
-    
+
     is implemented as
 
     .. math::
 
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D} \|^2_2,
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \frac{1}{2} \lambda \| \boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D} \|^2_2,
 
     with the gradient
 
     .. math::
 
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \lambda \frac{1}{n} \boldsymbol{E}^\top(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D}),
+        \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \boldsymbol{E}^\top(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D}),
 
     the learning rate
 
     .. math::
 
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{E} \|},
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{E} \|},
 
     and the solution
 
@@ -64,7 +64,7 @@ def l2_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     - :math:`\lambda`: Regularization parameter,
     - :math:`n`: Number of samples.
     """
-    
+
     # Type Conversion
     D = np.asarray(D).astype(FLOAT_DTYPE)
     E = np.asarray(E).astype(FLOAT_DTYPE)
@@ -100,23 +100,21 @@ def _l2_fit(D, E, lambd) -> Method:
         _, m = R.shape
         E_ = E[:, :m]
 
-        return 0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(
-            (E_ @ x - D) ** 2
-        )
+        return 0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum((E_ @ x - D) ** 2)
 
     @njit(fastmath=FASTMATH)
     def grad_f(x, R, F) -> np.ndarray:
         x = x.astype(FLOAT_DTYPE)
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
-        grad_2 = lambd * E_.T @ (E_ @ x - D) / n
+        grad_2 = lambd * E_.T @ (E_ @ x - D)
 
         # Total gradient
         grad = grad_1 + grad_2
@@ -141,9 +139,9 @@ def _l2_fit(D, E, lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = R.astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
-        return n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E_.T @ E_))
+        return 1.0 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(E_.T @ E_))
 
     return Method("l2_fit", f, grad_f, solution, lr)

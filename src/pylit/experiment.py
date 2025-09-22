@@ -171,10 +171,11 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     model.compute_regression_matrix()
 
     # Method Arguments
+    E = model(prep.omega, matrix=True)
     args = {
         "omegas": prep.omega,
         "D": prep.scaled_D,
-        "E": model(prep.omega, matrix=True),
+        "E": E,
     }
     args = {
         key: value
@@ -185,7 +186,7 @@ def itransform(config: Configuration, prep: Preparation) -> Result:
     # Optimize
     R = model.regression_matrix
     # m = R.shape[1]
-    c0_lsq, _ = nnls(args["E"], args["D"])
+    c0_lsq, _ = nnls(E, prep.scaled_D)
     first_param_len = len(model.params[0])
     solutions = []
 

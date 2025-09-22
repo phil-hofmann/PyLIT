@@ -32,7 +32,23 @@ class Cauchy(LinearRegressionModel):
         omega: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray:
-        """The Gaussian kernel function."""
+        r"""Evaluate the Cauchy kernel function for a given set of parameters.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.kernel`.
+
+        Args:
+            omega:
+                Discrete frequency axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Values of the Cauchy kernel
+
+            .. math::
+                K(\omega; \mu, \sigma) = \frac{\sigma}{\pi ((\omega-\mu)^2 + \sigma^2)}.
+        """
+
         mu, sigma = param
         return sigma / (np.pi * ((omega - mu) ** 2 + sigma**2))
 
@@ -41,6 +57,22 @@ class Cauchy(LinearRegressionModel):
         tau: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray[FLOAT_DTYPE]:
-        """The Laplace transform of the Gaussian kernel."""
+        r"""Evaluate the Laplace-transformed Cauchy kernel at the discrete time axis.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.ltransform`.
+
+        Args:
+            tau:
+                Discrete time axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Laplace-transformed kernel
+
+            .. math::
+                \widehat K(\tau; \mu, \sigma) = \exp(-\mu \tau - \sigma |\tau|).
+        """
+
         mu, sigma = param
         return np.exp(-mu * tau - sigma * np.abs(tau))

@@ -6,7 +6,8 @@ Methods
 .. toctree::
    :maxdepth: 1
    :hidden:
-   
+
+   methods/cdf_l2_fit
    methods/l1_reg
    methods/l2_fit
    methods/l2_reg

@@ -31,8 +31,8 @@ def l1_reg(lambd: FLOAT_DTYPE) -> Method:
     .. math::
 
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|_1,
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \lambda \| \boldsymbol{\alpha} \|_1,
 
 
     with the gradient
@@ -40,16 +40,16 @@ def l1_reg(lambd: FLOAT_DTYPE) -> Method:
     .. math::
 
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) \pm
-        \lambda \frac{1}{n}, \quad \boldsymbol{\alpha} \neq 0,
-    
+        \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) \pm
+        \lambda, \quad \boldsymbol{\alpha} \neq 0,
+
 
     the learning rate
 
     .. math::
 
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}, \quad \boldsymbol{\alpha} \neq 0,
-    
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} \|}, \quad \boldsymbol{\alpha} \neq 0,
+
 
     and the solution
 
@@ -96,20 +96,20 @@ def _l1_reg(lambd) -> Method:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
 
-        return FLOAT_DTYPE(0.5 * np.mean((R @ x - F) ** 2) + lambd * np.mean(x))
+        return FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2) + lambd * np.sum(x))
 
     @njit(fastmath=FASTMATH)
     def grad_f(x, R, F) -> np.ndarray:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, _ = R.shape
+        _, _ = R.shape
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
-        grad_2 = lambd * np.sign(x) / n
+        grad_2 = lambd * np.sign(x)
 
         # Total gradient
         grad = grad_1 + grad_2
@@ -131,8 +131,8 @@ def _l1_reg(lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, _ = R.shape
+        _, _ = R.shape
 
-        return FLOAT_DTYPE(n / np.linalg.norm(R.T @ R))
+        return FLOAT_DTYPE(1.0 / np.linalg.norm(R.T @ R))
 
     return Method("l1_reg", f, grad_f, solution, lr)

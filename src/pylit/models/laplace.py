@@ -33,7 +33,24 @@ class Laplace(LinearRegressionModel):
         omega: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray:
-        """The Laplacian kernel function."""
+        r"""Evaluate the Laplacian kernel function for a given set of parameters.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.kernel`.
+
+        Args:
+            omega:
+                Discrete frequency axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Values of the Laplacian kernel
+
+            .. math::
+                K(\omega; \mu, \sigma) =
+                \frac{1}{2 \sigma} \exp\Big(-\frac{|\omega-\mu|}{\sigma}\Big).
+        """
+
         mu, sigma = param
         return (1 / (2 * sigma)) * np.exp(-np.abs(omega - mu) / sigma)
 
@@ -42,6 +59,23 @@ class Laplace(LinearRegressionModel):
         tau: np.ndarray[FLOAT_DTYPE],
         param: List[float],
     ) -> np.ndarray[FLOAT_DTYPE]:
-        """The Laplace transform of the Laplacian kernel."""
+        r"""Evaluate the Laplace-transformed Laplacian kernel at the discrete time axis.
+
+        This method overrides :meth:`~pylit.models.lrm.LinearRegressionModel.ltransform`.
+
+        Args:
+            tau:
+                Discrete time axis.
+            param:
+                Parameter tuple [mu, sigma].
+
+        Returns:
+            Values of the Laplace-transformed Laplacian kernel
+
+            .. math::
+                \widehat{K}(\tau; \mu, \sigma) =
+                \frac{\exp(-\mu \tau)}{1 - \sigma^2 \tau^2}.
+        """
+
         mu, sigma = param
         return np.exp(-mu * tau) / (1 - sigma**2 * tau**2)

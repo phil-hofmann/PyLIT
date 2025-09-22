@@ -1,7 +1,7 @@
 Python Laplace Inverse Transform
 ================================
 
-This software provides a Python implementation of the inverse Laplace Transform.
+Python package for the inverse double-sided Laplace Transformation.
 
 .. toctree::
    :maxdepth: 2
@@ -21,8 +21,7 @@ Citation
 
 Alexander Benedix Robles, Phil-Alexander Hofmann, Thomas Chuna, Tobias Dornheim, Michael Hecht,  
 *PyLIT: Reformulation and implementation of the analytic continuation problem using kernel representation methods*,  
-arXiv:2505.10211 [physics.comp-ph], 2025.  
-`https://doi.org/10.48550/arXiv.2505.10211 <https://doi.org/10.48550/arXiv.2505.10211>`_
+arXiv:2505.10211 [physics.comp-ph], 2025. `https://doi.org/10.48550/arXiv.2505.10211 <https://doi.org/10.48550/arXiv.2505.10211>`_
 
 Team and Support
 ----------------
@@ -30,8 +29,8 @@ Team and Support
 - `Phil-Alexander Hofmann <https://github.com/philippocalippo/>`_
 - `Alexander Benedix Robles <https://github.com/alexanderbenedix/>`_
 - `Thomas Chuna <https://github.com/chunatho>`_
-- `Tobias Dornheim <https://www.casus.science/?page_id=4442>`_
-- `Michael Hecht <https://www.casus.science/?page_id=4528>`_
+- `Tobias Dornheim <https://github.com/todor90>`_
+- `Michael Hecht <https://github.com/mikeypice>`_
 
 
 We would like to acknowledge the support and resources provided by the

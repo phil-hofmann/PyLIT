@@ -16,62 +16,54 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 
 def cdf_l2_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     r"""
-    # Least Squares Cumulative Distribution Function L2 Fit
+    This is the Least Squares Cumulative Distribution Function (CDF) L2 method. `The interface is described in` :ref:`Methods <methods>`.
 
-    Implements the Wasserstein fitness with the objective function
+    The objective function
 
-    \\[
+    .. math::
+
         f(u,w,\lambda) =
         \frac{1}{2} \| \widehat u - \widehat w\|^2_{L^2(\mathbb{R})} +
         \frac{1}{2} \lambda \| \mathrm{CDF}[u - w] \|_{L^2(\mathbb{R})}^2
-    \\]
 
-    which is here implemented as
+    is implemented as
 
-    \\[
+    .. math::
+
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \frac{1}{2} \lambda \left( \frac{1}{n} \sum_{j=1}^n \frac{1}{j} \sum_{i=1}^j(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})_i^2 \right)
-    \\]
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \frac{1}{2} \lambda \left( \sum_{j=1}^n \sum_{i=1}^j(\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})_i^2 \right)
 
     with the gradient
 
-    \\[
+    .. math::
+
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
-        \lambda \frac{1}{n} \boldsymbol{E}^\top \boldsymbol{W} (\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})
-    \\]
+        \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \lambda \boldsymbol{E}^\top \boldsymbol{W} (\boldsymbol{E} \boldsymbol{\alpha} - \boldsymbol{D})
 
-    with the learning rate
+    the learning rate
 
-    \\[
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{W} \boldsymbol{E} \|}
-    \\]
+    .. math::
+
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{W} \boldsymbol{E} \|}
 
     and the solution
 
-    \\[
+    .. math::
+
         \boldsymbol{\alpha}^* = (\boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{E}^\top \boldsymbol{W} \boldsymbol{E})^{-1} (\boldsymbol{R}^\top \boldsymbol{F} + \lambda \boldsymbol{E}^\top \boldsymbol{W} \boldsymbol{D})
-    \\]
 
     where
 
-    - **$\boldsymbol{R}$**: Regression matrix
-    - **$\boldsymbol{F}$**: Target vector
-    - **$\boldsymbol{E}$**: Evaluation matrix
-    - **$\boldsymbol{D}$**: Default model vector
-    - **$\boldsymbol{W}$**: Weight matrix
-    - **$\boldsymbol{\alpha}$**: Coefficient vector
-    - **$\lambda$**: Regularization parameter
-    - **$n$**: Number of samples
-
-    ### Arguments
-    - **D** (np.ndarray): Default Model.
-    - **E** (np.ndarray): Evaluation Matrix.
-    - **lambd** (np.float64): Regularization Parameter.
-
-    ### Returns
-    - **Method**(Method): Implemented formulation for Wasserstein fitness.
+    - :math:`\boldsymbol{R}`: Regression matrix,
+    - :math:`\boldsymbol{F}`: Target vector,
+    - :math:`\boldsymbol{E}`: Evaluation matrix,
+    - :math:`\boldsymbol{D}`: Default model vector,
+    - :math:`\boldsymbol{W}`: Weight matrix,
+    - :math:`\boldsymbol{\alpha}`: Coefficient vector,
+    - :math:`\lambda`: Regularization parameter,
+    - :math:`n`: Number of samples.
     """
 
     # Type Conversion
@@ -83,7 +75,7 @@ def cdf_l2_fit(D: np.ndarray, E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     method = _cdf_l2_fit(D, E, lambd)
 
     # Compile
-    n, m = E.shape
+    _, m = E.shape
     alpha_, R_, F_, P_ = (
         np.zeros((m), dtype=FLOAT_DTYPE),
         np.eye(m, dtype=FLOAT_DTYPE),
@@ -106,12 +98,12 @@ def _cdf_l2_fit(D, E, lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
 
         return FLOAT_DTYPE(
-            0.5 * np.mean((R @ x - F) ** 2)
-            + 0.5 * lambd * np.mean(np.cumsum((E_ @ x - D) ** 2) / n)
+            0.5 * np.sum((R @ x - F) ** 2)
+            + 0.5 * lambd * np.sum(np.cumsum((E_ @ x - D) ** 2))
         )
 
     @njit(fastmath=FASTMATH)
@@ -119,15 +111,15 @@ def _cdf_l2_fit(D, E, lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         k = len(D)
         E_ = E[:, :m]
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
-        grad_2 = lambd * E_.T @ ((np.arange(k, 0, -1) / n**2) * (E_ @ x - D))
+        grad_2 = lambd * E_.T @ (np.arange(k, 0, -1) * (E_ @ x - D))
 
         # Total gradient
         grad = grad_1 + grad_2
@@ -138,9 +130,9 @@ def _cdf_l2_fit(D, E, lambd) -> Method:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         k = len(D)
-        W = np.diag(np.arange(k, 0, -1) / n)
+        W = np.diag(np.arange(k, 0, -1))
         E_R = E[:, :m]
 
         # np.ix_ unsupported in numba
@@ -156,11 +148,11 @@ def _cdf_l2_fit(D, E, lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         k = len(D)
         E_ = E[:, :m]
 
-        W = np.diag(np.arange(k, 0, -1) / n)
-        return FLOAT_DTYPE(n / np.linalg.norm(R.T @ R + lambd * E_.T @ W @ E_))
+        W = np.diag(np.arange(k, 0, -1))
+        return FLOAT_DTYPE(1.0 / np.linalg.norm(R.T @ R + lambd * E_.T @ W @ E_))
 
     return Method("cdf_l2_fit", f, grad_f, solution, lr)

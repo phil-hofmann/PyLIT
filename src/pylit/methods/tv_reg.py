@@ -19,7 +19,7 @@ def tv_reg(E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
     This is the total variation regularization method. `The interface is described in` :ref:`Methods <methods>`.
 
     The objective function (correct that)
-    
+
     .. math::
 
         f(u, w, \lambda) =
@@ -46,13 +46,13 @@ def tv_reg(E: np.ndarray, lambd: FLOAT_DTYPE) -> Method:
 
     .. math::
 
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + \lambda n \|\boldsymbol{V}_\boldsymbol{E}^\top \boldsymbol{V}_\boldsymbol{E}\|}
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} \| + \lambda n \|\boldsymbol{V}_\boldsymbol{E}^\top \boldsymbol{V}_\boldsymbol{E}\|}
 
     and the solution
 
     .. math::
 
-        \boldsymbol{\alpha}^* = \left( \frac{1}{n} \boldsymbol{R}^\top \boldsymbol{R} + \lambda \, \boldsymbol{V}_{\boldsymbol{E}}^\top \boldsymbol{V}_{\boldsymbol{E}} \right)^{-1} \boldsymbol{R}^\top \boldsymbol{F},
+        \boldsymbol{\alpha}^* = \left(\boldsymbol{R}^\top \boldsymbol{R} + \lambda \, \boldsymbol{V}_{\boldsymbol{E}}^\top \boldsymbol{V}_{\boldsymbol{E}} \right)^{-1} \boldsymbol{R}^\top \boldsymbol{F},
 
     where
 
@@ -105,7 +105,7 @@ def _tv_reg(E, lambd) -> Method:
         V_E = FD @ E_
 
         return FLOAT_DTYPE(
-            0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.sum((V_E @ x) ** 2)
+            0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum((V_E @ x) ** 2)
         )
 
     @njit(fastmath=FASTMATH)
@@ -113,12 +113,12 @@ def _tv_reg(E, lambd) -> Method:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
         V_E = FD @ E_
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
         grad_2 = lambd * V_E.T @ (V_E @ x)
@@ -133,14 +133,14 @@ def _tv_reg(E, lambd) -> Method:
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
         P = np.asarray(P).astype(INT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_R = E[:, :m]
         V_E_R = FD @ E_R
 
         # np.ix_ unsupported in numba
         R_P = R[:, P]
         V_E_P = V_E_R[:, P]
-        A = R_P.T @ R_P / n + lambd * V_E_P.T @ V_E_P
+        A = R_P.T @ R_P + lambd * V_E_P.T @ V_E_P
         b = R_P.T @ F
 
         return np.asarray(np.linalg.solve(A, b)).astype(FLOAT_DTYPE)
@@ -148,11 +148,11 @@ def _tv_reg(E, lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
         E_ = E[:, :m]
         V_E = FD @ E_
 
         norm = np.linalg.norm(V_E.T @ V_E)
-        return FLOAT_DTYPE(n / (np.linalg.norm(R.T @ R) + lambd * n * norm))
+        return FLOAT_DTYPE(1.0 / (np.linalg.norm(R.T @ R) + lambd * norm))
 
     return Method("tv_reg", f, grad_f, solution, lr)

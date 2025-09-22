@@ -1,0 +1,33 @@
+cff-version: 0.0.2
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Robles"
+    given-names: "Alexander Benedix"
+  - family-names: "Hofmann"
+    given-names: "Phil-Alexander"
+  - family-names: "Chuna"
+    given-names: "Thomas"
+  - family-names: "Dornheim"
+    given-names: "Tobias"
+  - family-names: "Hecht"
+    given-names: "Michael"
+title: "PyLIT"
+version: 0.0.2
+date-released: 2025-09-22
+repository-code: "https://github.com/phil-hofmann/pylit"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Robles"
+      given-names: "Alexander Benedix"
+    - family-names: "Hofmann"
+      given-names: "Phil-Alexander"
+    - family-names: "Chuna"
+      given-names: "Thomas"
+    - family-names: "Dornheim"
+      given-names: "Tobias"
+    - family-names: "Hecht"
+      given-names: "Michael"
+  title: "PyLIT: Reformulation and implementation of the analytic continuation problem using kernel representation methods"
+  date: "2025"
+  url: "https://doi.org/10.48550/arXiv.2505.10211"
