@@ -14,7 +14,7 @@ Python package for the inverse double-sided Laplace Transformation.
 License
 -------
 
-The project is licensed under the `MIT License <_static/LICENSE.txt>`_.
+The project is licensed under the `MIT License <https://github.com/phil-hofmann/PyLIT/blob/main/LICENSE.txt>`_.
 
 Citation
 --------

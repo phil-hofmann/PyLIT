@@ -15,7 +15,7 @@ def simulated_annealing(
     config: Configuration,
     prep: Preparation,
     has_sigma: bool,
-    max_iter: int = 200,
+    max_iter: int = 1000,
 ) -> np.ndarray:
     r"""
     Perform parameter selection using simulated annealing.

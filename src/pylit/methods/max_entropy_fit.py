@@ -106,7 +106,7 @@ def _max_entropy_fit(D, E, lambd) -> Method:
         _, m = R.shape
         E_ = E[:, :m]
 
-        p = E_ @ x
+        p = E_ @ x + 10e-10  # NOTE Default model should not take values close to zero.
         p = np.clip(p, a_min=0, a_max=None)
         log_p = np.log(p)
 

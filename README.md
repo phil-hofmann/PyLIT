@@ -22,6 +22,12 @@
   </a>
 </p>
 
+## Documentation
+
+- **Examples**: See PyLIT/examples.
+- **Source**: See PyLIT/docs.
+- **Online**: https://phil-hofmann.github.io/PyLIT/
+
 ## License
 
 The project is licensed under the [MIT License](./LICENSE.txt).

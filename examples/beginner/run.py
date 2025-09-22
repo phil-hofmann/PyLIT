@@ -10,7 +10,7 @@ if __name__ == "__main__":
     path_L_S = Path(__file__).parent / "L_S_out.csv"
     path_prep = Path(__file__).parent / "prep.json"
     path_res = Path(__file__).parent / "res.json"
-    lambdas = np.array([10e-1], dtype=np.float64)
+    lambdas = np.array([10e-6], dtype=np.float64)
 
     config = Configuration(
         path_F=path_F,
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         detailed_balance=True,
         model_name="Gauss",
         ### Method:
-        method_name="l2_fit",
+        method_name="l1_reg",
         lambd=lambdas,
         ### Optimizer:
         optimizer_name="nesterov",  # default value
