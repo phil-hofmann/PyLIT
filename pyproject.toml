@@ -1,6 +1,6 @@
 [project]
 name = "pylit"
-version = "0.1.0"
+version = "0.2"
 description = ""
 authors = [
     {name = "philippocalippo",email = "philhofmann@outlook.com"}
@@ -25,4 +25,5 @@ furo = "^2025.7.19"
 sphinx-autodoc-typehints = "^3.2.0"
 deptry = "^0.23.1"
 black = ">=25.9.0,<26.0.0"
+pydata-sphinx-theme = "^0.16.1"
 
