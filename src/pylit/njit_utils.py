@@ -2,8 +2,11 @@ import numpy as np
 from numba import njit
 from typing import Tuple
 
+
 @njit
-def svd_optim(R: np.ndarray, F: np.ndarray, x0: np.ndarray)->Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def svd_optim(
+    R: np.ndarray, F: np.ndarray, x0: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     r"""
     Perform a singular value decomposition (SVD) of matrix R
     and transform F and x0 into the SVD coordinate system.
@@ -45,7 +48,7 @@ def argmax(array: np.ndarray) -> int:
     Find the index of the maximum value in a 1D array.
 
     Args:
-        array: 
+        array:
             A 1D array of numeric values.
 
     Returns:

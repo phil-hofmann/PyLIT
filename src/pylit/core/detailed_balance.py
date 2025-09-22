@@ -3,7 +3,6 @@ from pylit.settings import FLOAT_DTYPE
 
 
 class DetailedBalance:
-
     r"""Base class for detailed balance computations.
 
     This class stores the inverse temperature parameter :math:`\beta`, given as the

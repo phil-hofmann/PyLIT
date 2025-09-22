@@ -13,15 +13,15 @@ def adaptiveRF(
     residuum_mode: bool = False,
 ) -> Solution:
     r"""
-    This is a wrapper for optimization methods. 
+    This is a wrapper for optimization methods.
 
     Description
     -----------
     Solves the optimization problem :eq:`(*) <lsq-problem>` using an adaptive
-    incremental wrapper around a given optimization method. This method partitions the 
+    incremental wrapper around a given optimization method. This method partitions the
     parameter space into blocks of size ``steps`` and applies the provided optimizer
     ``optim_RFx0`` sequentially to increasingly larger subsets of features.
-    After each block, the solution is updated based on either the residuum or 
+    After each block, the solution is updated based on either the residuum or
     the objective error (epsilon). This ensures that the optimization focuses
     on the most relevant features first and improves convergence second.
 
@@ -60,7 +60,7 @@ def adaptiveRF(
         steps:
             Block size for adaptive optimization. Must be positive and divide ``n``.
         optim_RFx0:
-            Optimization function with signature ``optim_RFx0(R, F, x0)`` returning 
+            Optimization function with signature ``optim_RFx0(R, F, x0)`` returning
             a ``Solution`` object.
         residuum_mode:
             If ``True``, the selection of the best solution is based on residuum.

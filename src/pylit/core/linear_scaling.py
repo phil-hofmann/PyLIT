@@ -3,12 +3,12 @@ import numpy as np
 from pylit.settings import FLOAT_DTYPE
 from pylit.utils import diff_interval
 
-class LinearScaling:
 
+class LinearScaling:
     r"""Base class for linear scaling of Laplace/inverse Laplace transforms.
 
-        This class sets up a diffeomorphism :math:`\psi`, which maps the time axis 
-        :math:`\tau` from the interval :math:`[\tau_0, \tau_1]` to :math:`[0, 1]`.
+    This class sets up a diffeomorphism :math:`\psi`, which maps the time axis
+    :math:`\tau` from the interval :math:`[\tau_0, \tau_1]` to :math:`[0, 1]`.
     """
 
     def __init__(self, tau: np.ndarray) -> None:
@@ -22,7 +22,7 @@ class LinearScaling:
 
         Raises:
             ValueError: If the nodes are not one-dimensional.
-            ValueError: If the right endpoint is not strictly positive.                
+            ValueError: If the right endpoint is not strictly positive.
         """
 
         # Type Conversion

@@ -17,7 +17,7 @@ def nnls(
     protocol: bool = False,
 ) -> Solution:
     r"""
-    This is the NNLS optimization method. 
+    This is the NNLS optimization method.
     `The interface is described in` :ref:`Optimizer <optimizer>`.
 
     Description
