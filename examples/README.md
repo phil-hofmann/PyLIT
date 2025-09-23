@@ -1,9 +1,7 @@
 Get Started
 ===========
 
-**Before running** any example, you must first follow the installation guide described [here](https://phil-hofmann.github.io/PyLIT/installation.html).  
-We recommend setting up the environment with **Poetry**.  
-If you are using **Anaconda**, note that the ESA synthetic data example requires some adjustments.
+**Before running** any example, you must first follow the installation guide described [here](https://phil-hofmann.github.io/PyLIT/installation.html).
 
 Two example configurations are provided in the ``PyLIT/examples/`` folder which you can
 download [here](https://github.com/phil-hofmann/PyLIT/archive/refs/heads/main.zip>).

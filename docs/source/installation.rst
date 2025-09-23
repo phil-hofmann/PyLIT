@@ -1,6 +1,9 @@
 Installation
 ============
 
+We recommend to **install PyLIT with Poetry**, if you use Anaconda you will have to make a few alterations 
+to run the sample usage scripts.
+
 The easiest way to install is via pip:
 
 .. code-block:: bash
