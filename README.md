@@ -24,9 +24,10 @@
 
 ## Documentation
 
-- **Examples**: See PyLIT/examples.
-- **Source**: See PyLIT/docs.
 - **Online**: https://phil-hofmann.github.io/PyLIT/
+- **Installation Instructions**: https://phil-hofmann.github.io/PyLIT/installation.html
+- **Sample Usage Instructions**: https://phil-hofmann.github.io/PyLIT/get-started.html
+- **Documentation**: https://phil-hofmann.github.io/PyLIT/modules.html
 
 ## License
 
