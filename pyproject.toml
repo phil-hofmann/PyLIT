@@ -3,12 +3,11 @@ name = "pylit"
 version = "0.2"
 description = ""
 authors = [
-"Phil-Alexander Hofmann", 
-"Alexander Benedix Robles", 
-"Thomas Chuna", 
-"Phil-Alexander Hofmann", 
-"Michael Hecht", 
-"Tobias Dornheim"
+{ name = "Phil-Alexander Hofmann" },
+{ name = "Alexander Benedix Robles" },
+{ name = "Thomas Chuna" },
+{ name = "Michael Hecht" },
+{ name = "Tobias Dornheim" },
 ]
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
