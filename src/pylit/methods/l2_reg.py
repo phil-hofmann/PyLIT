@@ -31,22 +31,22 @@ def l2_reg(lambd: FLOAT_DTYPE) -> Method:
     .. math::
 
         f(\boldsymbol{\alpha}) =
-        \frac{1}{2} \frac{1}{n} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
-        \frac{1}{2} \lambda \frac{1}{n} \| \boldsymbol{\alpha} \|^2_2,
+        \frac{1}{2} \| \boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F} \|^2_2 +
+        \frac{1}{2} \| \boldsymbol{\alpha} \|^2_2,
 
     with the gradient
 
     .. math::
 
         \nabla_{\boldsymbol{\alpha}} f(\boldsymbol{\alpha}) =
-        \frac{1}{n} \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
+        \boldsymbol{R}^\top(\boldsymbol{R} \boldsymbol{\alpha} - \boldsymbol{F}) +
         \lambda \frac{1}{n} \boldsymbol{\alpha},
 
     the learning rate
 
     .. math::
 
-        \eta = \frac{n}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I} \|},
+        \eta = \frac{1}{\| \boldsymbol{R}^\top \boldsymbol{R} + \lambda \boldsymbol{I} \|},
 
     and the solution
 
@@ -94,22 +94,20 @@ def _l2_reg(lambd) -> Method:
         R = R.astype(FLOAT_DTYPE)
         F = F.astype(FLOAT_DTYPE)
 
-        return FLOAT_DTYPE(
-            0.5 * np.mean((R @ x - F) ** 2) + lambd * 0.5 * np.mean(x**2)
-        )
+        return FLOAT_DTYPE(0.5 * np.sum((R @ x - F) ** 2) + lambd * 0.5 * np.sum(x**2))
 
     @njit(fastmath=FASTMATH)
     def grad_f(x, R, F) -> np.ndarray:
         x = np.asarray(x).astype(FLOAT_DTYPE)
         R = np.asarray(R).astype(FLOAT_DTYPE)
         F = np.asarray(F).astype(FLOAT_DTYPE)
-        n, _ = R.shape
+        _, _ = R.shape
 
         # Gradient of the first term
-        grad_1 = R.T @ (R @ x - F) / n
+        grad_1 = R.T @ (R @ x - F)
 
         # Gradient of the second term
-        grad_2 = lambd * x / n
+        grad_2 = lambd * x
 
         # Total gradient
         grad = grad_1 + grad_2
@@ -131,10 +129,10 @@ def _l2_reg(lambd) -> Method:
     @njit(fastmath=FASTMATH)
     def lr(R) -> FLOAT_DTYPE:
         R = np.asarray(R).astype(FLOAT_DTYPE)
-        n, m = R.shape
+        _, m = R.shape
 
         return FLOAT_DTYPE(
-            n / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
+            1.0 / (np.linalg.norm(R.T @ R) + lambd * np.linalg.norm(np.eye(m)))
         )
 
     return Method("l2_reg", f, grad_f, solution, lr)

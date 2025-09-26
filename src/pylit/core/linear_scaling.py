@@ -44,7 +44,7 @@ class LinearScaling:
 
     @property
     def tau1(self) -> float:
-        """Right endpoint of the interval is always :math:`\max \tau`."""
+        r"""Right endpoint of the interval is always :math:`\max \tau`."""
         return self._tau1
 
     @tau1.setter
@@ -53,7 +53,7 @@ class LinearScaling:
 
     @property
     def tau0(self) -> float:
-        """Left endpoint of the interval is always :math:`0.0`."""
+        r"""Left endpoint of the interval is always :math:`0.0`."""
         return self._tau0
 
     @tau0.setter
@@ -62,7 +62,7 @@ class LinearScaling:
 
     @property
     def psy(self) -> callable:
-        """The diffeomorphism mapping the interval ``[tau0, tau1]`` onto ``[0, tau1]``."""
+        r"""The diffeomorphism mapping the interval ``[tau0, tau1]`` onto ``[0, tau1]``."""
         return self._psy
 
     @psy.setter
@@ -73,7 +73,7 @@ class LinearScaling:
 class TauLinearScaling(LinearScaling):
 
     def __init__(self, tau: np.ndarray) -> None:
-        """Initialize the TauLinearScaling by means of its superclass."""
+        r"""Initialize the TauLinearScaling by means of its superclass."""
 
         super().__init__(tau)
 
@@ -112,7 +112,7 @@ class TauLinearScaling(LinearScaling):
 class OmegaLinearScaling(LinearScaling):
 
     def __init__(self, tau: np.ndarray) -> None:
-        """Initialize the OmegaLinearScaling by means of its superclass."""
+        r"""Initialize the OmegaLinearScaling by means of its superclass."""
 
         super().__init__(tau)
 
